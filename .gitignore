@@ -1,0 +1,4 @@
+*~
+*.pyc
+media.egg-info
+media.db
