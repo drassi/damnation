@@ -22,6 +22,7 @@ class Asset(Base):
     path = Column(Text, nullable=False)
     size = Column(Integer, nullable=False)
     name = Column(Text, nullable=False)
+    transcoded360 = Column(Integer, nullable=False)
     created = Column(Date, nullable=False)
 
     def __init__(self, path, size, name):
@@ -29,4 +30,4 @@ class Asset(Base):
         self.size = size
         self.name = name
         self.created = datetime.utcnow()
-
+        self.transcoded360 = 0

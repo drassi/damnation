@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title></title>
+    <title>assets</title>
   </head>
   <body>
     % for asset in assets:
