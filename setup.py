@@ -41,7 +41,6 @@ setup(name='media',
       [console_scripts]
       initialize_media_db = media.scripts.initializedb:main
       load_assets = media.scripts.loadassets:main
-      transcode_assets = media.scripts.transcodeassets:main
       """,
       )
 

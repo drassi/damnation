@@ -1,0 +1,2 @@
+require "transcode"
+require "resque/tasks"
