@@ -23,8 +23,20 @@ def load_asset(original_abspath):
     # get md5 and make sure we don't import a duplicate
     md5 = subprocess.check_output(['md5sum', original_abspath]).split(' ', 1)[0]
     if DBSession.query(Asset).filter(Asset.md5==md5).first():
-        print 'not importing %s, file already imported with md5 %s' % (original_abspath, md5)
+        print 'skipping %s, file already imported with md5 %s' % (original_abspath, md5)
         return None
+
+    # ffprobe the file to get dimensions and length and to ensure we can read it later
+    try:
+        ffprobe = subprocess.check_output(['ffprobe', '-show_streams', original_abspath]).split()
+    except:
+        print 'skipping %s, unable to ffprobe' % original_abspath
+        return None
+    duration = int(max(float(line.replace('duration=', '')) for line in ffprobe if line.startswith('duration=')))
+    width = max(int(line.replace('width=', '')) for line in ffprobe if line.startswith('width='))
+    height = max(int(line.replace('height=', '')) for line in ffprobe if line.startswith('height='))
+    if not duration or not width or not height:
+        print 'skipping %s, unable to get duration, width, height from ffprobe' % original_abspath
 
     # copy the asset from it's original location into the asset store directory
     import_dir = os.path.join(md5[0:2], md5[2:4])
@@ -38,7 +50,7 @@ def load_asset(original_abspath):
 
     # persist asset metadata to the db
     size = os.path.getsize(import_abspath)
-    asset = Asset(import_path, md5, size, original_basename, original_abspath)
+    asset = Asset('video', import_path, md5, size, duration, width, height, original_basename, original_abspath)
     print 'imported %s to %s size=%d md5=%s' % (original_abspath, import_abspath, size, md5)
     DBSession.add(asset)
     DBSession.flush()
