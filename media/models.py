@@ -14,12 +14,32 @@ class Asset(Base):
 
     id = Column(Integer, primary_key=True)
     path = Column(Text, nullable=False)
+    md5 = Column(Text, nullable=False)
     size = Column(Integer, nullable=False)
-    name = Column(Text, nullable=False)
+    title = Column(Text, nullable=False)
+    original_abspath = Column(Text, nullable=False)
     created = Column(Date, nullable=False)
 
-    def __init__(self, path, size, name):
+    def __init__(self, path, md5, size, title, original_abspath):
         self.path = path
+        self.md5 = md5
         self.size = size
-        self.name = name
+        self.title = title
+        self.original_abspath = original_abspath
         self.created = datetime.utcnow()
+
+class DerivativeAsset(Base):
+
+    __tablename__ = 'derivative_assets'
+
+    id = Column(Integer, primary_key=True)
+    path = Column(Text, nullable=False)
+    cmd = Column(Text)
+    output = Column(Text)
+    created = Column(Date, nullable=False)
+
+    def __init__(self, path, cmd, output):
+        self.path = path
+        self.cmd = cmd
+        self.output = output
+        self.created = created
