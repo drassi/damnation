@@ -6,7 +6,7 @@
   </head>
   <body>
     % for asset in assets:
-      ${asset.id} ${asset.path} ${asset.size} ${asset.name} ${asset.created}<br />
+      ${asset.id} ${asset.path} ${asset.size} ${asset.title} ${asset.created}<br />
     % endfor
   </body>
 </html>
