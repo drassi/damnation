@@ -11,12 +11,12 @@ from sqlalchemy import engine_from_config
 from pyramid.paster import get_appsettings, setup_logging
 
 from ..models import DBSession, Base, Asset
+from ..config import Config
 
-ASSET_ROOT = '/media/dam'
 REDIS = redis.Redis()
 
 def get_abspath(asset):
-    return os.path.join(ASSET_ROOT, asset.path)
+    return os.path.join(Config.ASSET_ROOT, asset.path)
 
 def load_asset(original_abspath):
 
@@ -28,7 +28,7 @@ def load_asset(original_abspath):
 
     # copy the asset from it's original location into the asset store directory
     import_dir = os.path.join(md5[0:2], md5[2:4])
-    import_absdir = os.path.join(ASSET_ROOT, import_dir)
+    import_absdir = os.path.join(Config.ASSET_ROOT, import_dir)
     if not os.path.isdir(import_absdir):
         os.makedirs(import_absdir)
     original_basename = os.path.basename(original_abspath)
@@ -56,10 +56,10 @@ def load_assets(asset_root):
 def queue_transcoding(assets):
     for asset in assets:
         inpath = asset.path
-        infile = os.path.join(ASSET_ROOT, inpath)
+        infile = os.path.join(Config.ASSET_ROOT, inpath)
         rand4 = ''.join(random.choice(string.lowercase + string.digits) for i in xrange(4))
         outpath = '%s.%s.t360.flv' % (inpath, rand4)
-        outfile = os.path.join(ASSET_ROOT, outpath)
+        outfile = os.path.join(Config.ASSET_ROOT, outpath)
         REDIS.rpush('resque:queue:transcode360',
                     json.dumps({'class': 'Transcode360', 'args': [asset.id, infile, outfile, outpath]}))
 

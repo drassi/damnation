@@ -3,3 +3,4 @@
 *.pyc
 media.egg-info
 media.db
+media/static/assets

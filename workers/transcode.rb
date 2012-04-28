@@ -30,6 +30,6 @@ class Transcode360
       raise output
     end
     db = SQLite3::Database.new SQLITE_DB
-    db.execute 'insert into derivative_assets ("path", "cmd", "output", "created") values (?, ?, ?, date("now"))', outpath, cmd, output
+    db.execute 'insert into derivative_assets ("asset_id", "path", "cmd", "output", "created") values (?, ?, ?, ?, date("now"))', asset_id, outpath, cmd, output
   end
 end

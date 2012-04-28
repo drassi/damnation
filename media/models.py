@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, Text, Date
+from sqlalchemy import Column, Integer, Text, Date, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, relationship, backref
 from zope.sqlalchemy import ZopeTransactionExtension
 
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
@@ -33,12 +33,16 @@ class DerivativeAsset(Base):
     __tablename__ = 'derivative_assets'
 
     id = Column(Integer, primary_key=True)
+    asset_id = Column(Integer, ForeignKey('assets.id'), nullable=False)
     path = Column(Text, nullable=False)
     cmd = Column(Text)
     output = Column(Text)
     created = Column(Date, nullable=False)
 
-    def __init__(self, path, cmd, output):
+    parent = relationship(Asset, backref='derivatives')
+
+    def __init__(self, asset_id, path, cmd, output):
+        self.asset_id = asset_id
         self.path = path
         self.cmd = cmd
         self.output = output
