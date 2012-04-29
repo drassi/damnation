@@ -10,5 +10,6 @@ from .config import Config
 def list_assets(request):
     assets = DBSession.query(Asset).limit(20).all()
     return {
-      'assets' : assets
+      'assets' : assets,
+      'base_media_url' : Config.BASE_MEDIA_URL,
     }

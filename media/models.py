@@ -45,6 +45,7 @@ class DerivativeAsset(Base):
 
     id = Column(Integer, primary_key=True)
     asset_id = Column(Integer, ForeignKey('assets.id'), nullable=False)
+    derivative_type = Column(Text, nullable=False)
     path = Column(Text, nullable=False)
     cmd = Column(Text)
     output = Column(Text)
@@ -52,9 +53,10 @@ class DerivativeAsset(Base):
 
     parent = relationship(Asset, backref='derivatives')
 
-    def __init__(self, asset_id, path, cmd, output):
+    def __init__(self, asset_id, derivative_type, path, cmd):
         self.asset_id = asset_id
+        self.derivative_type = derivative_type
         self.path = path
         self.cmd = cmd
         self.output = output
-        self.created = created
+        self.created = datetime.utcnow()

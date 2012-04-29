@@ -1,4 +1,5 @@
-sudo apt-get install -y python-virtualenv ffmpeg libavcodec-extra-53 gcc python-dev
+# stuff for python
+sudo apt-get install -y python-virtualenv gcc python-dev
 virtualenv dam --no-site-packages
 cd dam
 source bin/activate
@@ -7,6 +8,13 @@ cd damnation
 python setup.py develop
 initialize_media_db development.ini
 
+# stuff for transcoding
+sudo apt-get install -y ffmpeg libavcodec-extra-53 flvtool2
+
+# stuff for webserver
+sudo apt-get install -y nginx-extras
+
+# stuff for resque
 sudo apt-get install -y redis-server ruby rubygems ruby-dev sqlite3 libsqlite3-dev
 sudo gem install rubygems-update
 sudo update_rubygems

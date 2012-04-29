@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 import redis
@@ -28,15 +29,16 @@ def load_asset(original_abspath):
 
     # ffprobe the file to get dimensions and length and to ensure we can read it later
     try:
-        ffprobe = subprocess.check_output(['ffprobe', '-show_streams', original_abspath]).split()
+        ffprobe = subprocess.check_output(['ffprobe', '-show_streams', original_abspath])
     except:
         print 'skipping %s, unable to ffprobe' % original_abspath
         return None
-    duration = int(max(float(line.replace('duration=', '')) for line in ffprobe if line.startswith('duration=')))
-    width = max(int(line.replace('width=', '')) for line in ffprobe if line.startswith('width='))
-    height = max(int(line.replace('height=', '')) for line in ffprobe if line.startswith('height='))
-    if not duration or not width or not height:
+    durations = [int(d) for d in re.findall('^duration=(\d+)\.\d+\s*$', ffprobe, re.MULTILINE)]
+    widths = [int(d) for d in re.findall('^width=(\d+)\s*$', ffprobe, re.MULTILINE)]
+    heighths = [int(d) for d in re.findall('^height=(\d+)\s*$', ffprobe, re.MULTILINE)]
+    if not durations or not widths or not heighths:
         print 'skipping %s, unable to get duration, width, height from ffprobe' % original_abspath
+    duration, width, height = max(durations), max(widths), max(heighths)
 
     # copy the asset from it's original location into the asset store directory
     import_dir = os.path.join(md5[0:2], md5[2:4])
@@ -66,14 +68,15 @@ def load_assets(asset_root):
     return filter(lambda x: x is not None, assets)
 
 def queue_transcoding(assets):
+    derivative_type = 't360'
     for asset in assets:
         inpath = asset.path
         infile = os.path.join(Config.ASSET_ROOT, inpath)
         rand4 = ''.join(random.choice(string.lowercase + string.digits) for i in xrange(4))
-        outpath = '%s.%s.t360.flv' % (inpath, rand4)
+        outpath = '%s.%s.%s.flv' % (inpath, rand4, derivative_type)
         outfile = os.path.join(Config.ASSET_ROOT, outpath)
         REDIS.rpush('resque:queue:transcode360',
-                    json.dumps({'class': 'Transcode360', 'args': [asset.id, infile, outfile, outpath]}))
+                    json.dumps({'class': 'Transcode360', 'args': [asset.id, derivative_type, infile, outfile, outpath]}))
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
