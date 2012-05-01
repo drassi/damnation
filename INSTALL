@@ -8,8 +8,8 @@ cd damnation
 python setup.py develop
 initialize_media_db development.ini
 
-# stuff for transcoding
-sudo apt-get install -y ffmpeg libavcodec-extra-53 flvtool2
+# stuff for video/audio/photo manipulation and such
+sudo apt-get install -y ffmpeg libavcodec-extra-53 flvtool2 imagemagick gifsicle
 
 # stuff for webserver
 sudo apt-get install -y nginx-extras

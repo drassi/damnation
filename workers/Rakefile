@@ -1,2 +1,2 @@
-require "transcode"
+require "assetworker"
 require "resque/tasks"

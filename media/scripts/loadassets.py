@@ -29,7 +29,7 @@ def load_asset(original_abspath):
 
     # ffprobe the file to get dimensions and length and to ensure we can read it later
     try:
-        ffprobe = subprocess.check_output(['ffprobe', '-show_streams', original_abspath])
+        ffprobe = subprocess.check_output(['ffprobe', '-show_streams', original_abspath], stderr=open('/dev/null', 'w'))
     except:
         print 'skipping %s, unable to ffprobe' % original_abspath
         return None
@@ -53,7 +53,7 @@ def load_asset(original_abspath):
     # persist asset metadata to the db
     size = os.path.getsize(import_abspath)
     asset = Asset('video', import_path, md5, size, duration, width, height, original_basename, original_abspath)
-    print 'imported %s to %s size=%d md5=%s' % (original_abspath, import_abspath, size, md5)
+    print 'imported %s to %s size=%d' % (original_abspath, import_abspath, size)
     DBSession.add(asset)
     DBSession.flush()
 
@@ -67,16 +67,54 @@ def load_assets(asset_root):
             assets.append(load_asset(abspath))
     return filter(lambda x: x is not None, assets)
 
-def queue_transcoding(assets):
-    derivative_type = 't360'
+def rand4():
+    return ''.join(random.choice(string.lowercase + string.digits) for i in xrange(4))
+
+def queue_transcodes_and_screenshots(assets):
+    [REDIS.sadd('resque:queues', q) for q in ['transcode', 'screenshot', 'thumbnail']]
     for asset in assets:
         inpath = asset.path
         infile = os.path.join(Config.ASSET_ROOT, inpath)
-        rand4 = ''.join(random.choice(string.lowercase + string.digits) for i in xrange(4))
-        outpath = '%s.%s.%s.flv' % (inpath, rand4, derivative_type)
-        outfile = os.path.join(Config.ASSET_ROOT, outpath)
-        REDIS.rpush('resque:queue:transcode360',
-                    json.dumps({'class': 'Transcode360', 'args': [asset.id, derivative_type, infile, outfile, outpath]}))
+
+        flv_derivative_type = 'transcode.360.flv'
+        flv_outpath = '%s.%s.%s' % (inpath, rand4(), flv_derivative_type)
+        flv_outfile = os.path.join(Config.ASSET_ROOT, flv_outpath)
+        flv_cmd = "ffmpeg -i %s -f flv -vf 'scale=-1:360' -r 15 -b 700 -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, flv_outfile)
+        flvtool_cmd = 'flvtool2 -U %s' % flv_outfile
+        flv_cmds = [flv_cmd, flvtool_cmd]
+
+        num_screenshots = 18
+        screenshot_derivative_type = 'screenshot.180.gif'
+        screenshot_ffmpeg_filedirective = 'screenshot.180.%%02d.%d.png' % num_screenshots
+        screenshot_outprefix = '%s.%s' % (inpath, rand4())
+        screenshot_png_outfiles = os.path.join(Config.ASSET_ROOT, '%s.%s' % (screenshot_outprefix, screenshot_ffmpeg_filedirective))
+        screenshot_rate = 1.0 * num_screenshots / asset.duration
+        screenshot_pngs = 'screenshot.180.*.%d.png' % num_screenshots
+        screenshot_pngs_abs = os.path.join(Config.ASSET_ROOT, '%s.%s' % (screenshot_outprefix, screenshot_pngs))
+        screenshot_gifs = 'screenshot.180.*.%d.gif' % num_screenshots
+        screenshot_gifs_abs = os.path.join(Config.ASSET_ROOT, '%s.%s' % (screenshot_outprefix, screenshot_gifs))
+        screenshot_outfile = 'screenshot.180.%d.gif' % num_screenshots
+        screenshot_outpath = '%s.%s' % (screenshot_outprefix, screenshot_outfile)
+        screenshot_outfile_abs = os.path.join(Config.ASSET_ROOT, screenshot_outpath)
+        screenshot_cmd = "ffmpeg -i %s -s 240x180 -r %.6f -vcodec png %s" % (infile, screenshot_rate, screenshot_png_outfiles)
+        mogrify_cmd = 'mogrify -format gif %s' % screenshot_pngs_abs
+        gifsicle_cmd = 'gifsicle --delay=25 --loop --colors 256 %s > %s' % (screenshot_gifs_abs, screenshot_outfile_abs)
+        rm_cmd = 'rm %s %s' % (screenshot_pngs_abs, screenshot_gifs_abs)
+        screenshot_cmds = [screenshot_cmd, mogrify_cmd, gifsicle_cmd, rm_cmd]
+
+        thumbnail_derivative_type = 'thumbnail.180.png'
+        thumbnail_outpath = '%s.%s.%s' % (inpath, rand4(), thumbnail_derivative_type)
+        thumbnail_outfile = os.path.join(Config.ASSET_ROOT, thumbnail_outpath)
+        thumbnail_location_secs = asset.duration / 4
+        thumbnail_cmd = "ffmpeg -ss %d -i %s -t 1 -s 240x180 -vframes 1 -vcodec png %s" % (thumbnail_location_secs, infile, thumbnail_outfile)
+        thumbnail_cmds = [thumbnail_cmd]
+
+        REDIS.rpush('resque:queue:transcode',
+                    json.dumps({'class': 'TranscodeAsset', 'args': [asset.id, flv_derivative_type, flv_cmds, flv_outpath]}))
+        REDIS.rpush('resque:queue:screenshot',
+                    json.dumps({'class': 'ScreenshotAsset', 'args': [asset.id, screenshot_derivative_type, screenshot_cmds, screenshot_outpath]}))
+        REDIS.rpush('resque:queue:thumbnail',
+                    json.dumps({'class': 'ThumbnailAsset', 'args': [asset.id, thumbnail_derivative_type, thumbnail_cmds, thumbnail_outpath]}))
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
@@ -97,5 +135,5 @@ def main(argv=sys.argv):
     with transaction.manager:
         new_assets = load_assets(asset_path)
         print 'done importing %d assets, queueing transcoding..' % len(new_assets)
-        queue_transcoding(new_assets)
+        queue_transcodes_and_screenshots(new_assets)
     print 'done!'
