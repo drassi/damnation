@@ -4,3 +4,4 @@
 media.egg-info
 media.db
 media/static/assets
+media/config.py
