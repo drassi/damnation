@@ -30,3 +30,20 @@ def list_assets(request):
       'page_assets' : page_assets,
       'base_media_url' : Config.BASE_MEDIA_URL,
     }
+
+@view_config(route_name='show-asset', renderer='show-asset.mako')
+def show_asset(request):
+    asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==request.matchdict['id']).one()
+    transcode_matches = [d.path for d in asset.derivatives if d.derivative_type == 'transcode.360.flv']
+    if not transcode_matches:
+        raise Exception('Couldnt locate the proper transcode of this asset')
+    transcode = transcode_matches[0]
+    asset.transcode = transcode
+    return {
+        'asset' : asset,
+        'base_media_url' : Config.BASE_MEDIA_URL,
+    }
+
+@view_config(route_name='debug', renderer='json')
+def debug(request):
+    raise Exception()

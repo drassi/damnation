@@ -1,0 +1,10 @@
+div.asset-container {
+  float: left;
+  margin: 5px;
+  width: 240px;
+}
+
+div.asset-container:hover {
+  cursor: pointer;
+  background-color: #ddd;
+}

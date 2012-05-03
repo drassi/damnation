@@ -83,7 +83,7 @@ def queue_transcodes_and_screenshots(assets):
         flvtool_cmd = 'flvtool2 -U %s' % flv_outfile
         flv_cmds = [flv_cmd, flvtool_cmd]
 
-        num_screenshots = 18
+        num_screenshots = 14
         screenshot_derivative_type = 'screenshot.180.gif'
         screenshot_ffmpeg_filedirective = 'screenshot.180.%%02d.%d.png' % num_screenshots
         screenshot_outprefix = '%s.%s' % (inpath, rand4())
@@ -98,7 +98,7 @@ def queue_transcodes_and_screenshots(assets):
         screenshot_outfile_abs = os.path.join(Config.ASSET_ROOT, screenshot_outpath)
         screenshot_cmd = "ffmpeg -i %s -s 240x180 -r %.6f -vcodec png %s" % (infile, screenshot_rate, screenshot_png_outfiles)
         mogrify_cmd = 'mogrify -format gif %s' % screenshot_pngs_abs
-        gifsicle_cmd = 'gifsicle --delay=25 --loop --colors 256 %s > %s' % (screenshot_gifs_abs, screenshot_outfile_abs)
+        gifsicle_cmd = 'gifsicle --delay=50 --loop --colors 256 %s > %s' % (screenshot_gifs_abs, screenshot_outfile_abs)
         rm_cmd = 'rm %s %s' % (screenshot_pngs_abs, screenshot_gifs_abs)
         screenshot_cmds = [screenshot_cmd, mogrify_cmd, gifsicle_cmd, rm_cmd]
 
