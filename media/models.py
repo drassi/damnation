@@ -1,3 +1,4 @@
+import simplejson as json
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, Text, Date, ForeignKey
@@ -21,6 +22,7 @@ class Asset(Base):
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
     title = Column(Text, nullable=False)
+    metadata_json = Column(Text, nullable=False)
     original_abspath = Column(Text, nullable=False)
     created = Column(Date, nullable=False)
 
@@ -35,9 +37,16 @@ class Asset(Base):
         self.title = title
         self.original_abspath = original_abspath
         self.created = datetime.utcnow()
+        self.set_metadata({})
 
     def size_mb_str(self):
         return '%0.1f' % (self.size * 1.0 / (1024 * 1024))
+
+    def get_metadata(self):
+        return json.loads(self.metadata_json)
+
+    def set_metadata(self, metadata):
+        self.metadata_json = json.dumps(metadata)
 
 class DerivativeAsset(Base):
 

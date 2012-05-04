@@ -12,6 +12,7 @@ def main(global_config, **settings):
     config.add_static_view('static', 'static', cache_max_age=3600)
     config.add_route('list-assets', '/')
     config.add_route('show-asset', '/view/{id}')
+    config.add_route('youtube-upload', '/ajax/youtube-upload')
     config.add_route('debug', '/debug')
     config.scan()
     return config.make_wsgi_app()
