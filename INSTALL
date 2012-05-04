@@ -1,5 +1,5 @@
 # stuff for python
-sudo apt-get install -y python-virtualenv gcc python-dev
+sudo apt-get install -y python-virtualenv gcc python-dev git
 virtualenv dam --no-site-packages
 cd dam
 source bin/activate
@@ -28,3 +28,11 @@ sudo gem install open4
 sudo gem install json
 resque-web
 
+# stuff for youtube
+sudo apt-get install libcurl4-gnutls-dev librtmp-dev subversion
+pip install pycurl
+pip install gdata
+cd ..
+svn checkout http://youtube-upload.googlecode.com/svn/trunk/ youtube-upload
+cd youtube-upload
+python setup.py install

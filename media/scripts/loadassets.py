@@ -71,7 +71,7 @@ def rand4():
     return ''.join(random.choice(string.lowercase + string.digits) for i in xrange(4))
 
 def queue_transcodes_and_screenshots(assets):
-    [REDIS.sadd('resque:queues', q) for q in ['transcode', 'screenshot', 'thumbnail']]
+    [REDIS.sadd('resque:queues', q) for q in ['transcode', 'screenshot', 'thumbnail', 'youtube']]
     for asset in assets:
         inpath = asset.path
         infile = os.path.join(Config.ASSET_ROOT, inpath)
