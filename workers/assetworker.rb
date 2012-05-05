@@ -23,9 +23,17 @@ class DerivativeAsset
     for cmd in cmds do
       output.push self.run_cmd cmd
     end
-    db = SQLite3::Database.new SQLITE_DB
-    db.execute 'insert into derivative_assets ("asset_id", "derivative_type", "path", "cmd", "output", "created") values (?, ?, ?, ?, ?, date("now"))',
-                asset_id, derivative_type, result_path, JSON.dump(cmds), JSON.dump(output)
+    committed = false
+    while !committed:
+        begin
+            db = SQLite3::Database.new SQLITE_DB
+            db.execute 'insert into derivative_assets ("asset_id", "derivative_type", "path", "cmd", "output", "created") values (?, ?, ?, ?, ?, date("now"))',
+                        asset_id, derivative_type, result_path, JSON.dump(cmds), JSON.dump(output)
+            committed = true
+        rescue
+            sleep(rand(50) * 1.0 / 10)
+        end
+    end
   end
 end
 

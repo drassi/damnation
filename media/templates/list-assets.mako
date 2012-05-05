@@ -33,6 +33,7 @@
         <div>
           <div><img class="screenshot" src="${base_media_url}/${asset.thumbnail}" data-still-src="${base_media_url}/${asset.thumbnail}" data-moving-src="${base_media_url}/${asset.screenshot}"></img></div>
           <div>${asset.title}</div>
+          <div>${asset.original_abspath}</div>
           <div>${asset.duration}sec ${asset.width}x${asset.height} ${asset.size_mb_str()}MB</div>
           <div>Added ${asset.created}</div>
         </div>
