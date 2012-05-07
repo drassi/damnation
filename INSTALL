@@ -19,14 +19,7 @@ sudo apt-get install -y nginx-extras
 sudo apt-get install -y redis-server ruby rubygems ruby-dev sqlite3 libsqlite3-dev
 sudo gem install rubygems-update
 sudo update_rubygems
-sudo gem install SystemTimer
-sudo gem install json
-sudo gem install rake
-sudo gem install resque
-sudo gem install god
-sudo gem install sqlite3
-sudo gem install open4
-sudo gem install json
+sudo gem install SystemTimer json rake resque god sqlite3 open4
 resque-web
 
 # stuff for youtube
