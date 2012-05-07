@@ -6,6 +6,7 @@ source bin/activate
 git clone <your-clone-url>
 cd damnation
 python setup.py develop
+pip install simplejson
 initialize_media_db development.ini
 
 # stuff for video/audio/photo manipulation and such
