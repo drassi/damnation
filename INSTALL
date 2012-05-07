@@ -20,7 +20,7 @@ sudo apt-get install -y redis-server ruby rubygems ruby-dev sqlite3 libsqlite3-d
 sudo gem install rubygems-update
 sudo update_rubygems
 sudo gem install SystemTimer json rake resque god sqlite3 open4
-resque-web
+resque-web -o 127.0.0.1
 
 # stuff for youtube
 sudo apt-get install libcurl4-gnutls-dev librtmp-dev subversion
