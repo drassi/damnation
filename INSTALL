@@ -24,7 +24,7 @@ sudo gem install SystemTimer json rake resque god sqlite3 open4
 resque-web -o 127.0.0.1
 
 # stuff for youtube
-sudo apt-get install libcurl4-gnutls-dev librtmp-dev
+sudo apt-get install -y libcurl4-gnutls-dev librtmp-dev
 pip install pycurl gdata
 pip install youtube-upload
 curl http://youtube-upload.googlecode.com/svn/trunk/examples/split_video_for_youtube.sh > ../bin/split_video_for_youtube && chmod u+x ../bin/split_video_for_youtube
