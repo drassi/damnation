@@ -1,12 +1,10 @@
 require 'rubygems'
 require 'json'
 require 'open4'
-require 'sqlite3'
+require 'pg'
 require 'tmpdir'
 require 'shellwords'
 require 'fileutils'
-
-SQLITE_DB = '/home/dan/dam/damnation/media.db'
 
 class YoutubeUpload
 
@@ -54,9 +52,9 @@ class YoutubeUpload
     if video_ids.length == 0:
         raise JSON.dump upload_output
     end
-    db = SQLite3::Database.new SQLITE_DB
-    db.execute 'insert into derivative_assets ("asset_id", "derivative_type", "path", "cmd", "output", "created") values (?, ?, ?, ?, ?, date("now"))',
-                asset_id, derivative_type, JSON.dump(video_ids), JSON.dump(cmds), JSON.dump(output)
+    db = PG.connect(:dbname => 'damnation', :user => 'damnation')
+    db.execute 'insert into derivative_assets ("asset_id", "derivative_type", "path", "cmd", "output", "created") values ($1, $2, $3, $4, $5, now()))',
+                [asset_id, derivative_type, JSON.dump(video_ids), JSON.dump(cmds), JSON.dump(output)]
 
     FileUtils.rm_rf tmpdir
   end
