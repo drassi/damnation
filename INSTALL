@@ -18,10 +18,10 @@ sudo apt-get install -y nginx-extras
 # stuff for resque
 sudo apt-get install -y redis-server ruby rubygems ruby-dev sqlite3 libsqlite3-dev
 pip install redis
-sudo gem install rubygems-update
+sudo gem install rubygems-update --no-rdoc --no-ri
 sudo update_rubygems
-sudo gem install SystemTimer json rake resque god sqlite3 open4
-resque-web -o 127.0.0.1
+sudo gem install SystemTimer json rake resque god sqlite3 open4 --no-rdoc --no-ri
+resque-web -o localhost
 
 # stuff for youtube
 sudo apt-get install -y libcurl4-gnutls-dev librtmp-dev
