@@ -6,6 +6,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship, backref
 from zope.sqlalchemy import ZopeTransactionExtension
 
+from pyramid.security import Allow, Everyone
+
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 Base = declarative_base()
 
@@ -69,3 +71,9 @@ class DerivativeAsset(Base):
         self.cmd = cmd
         self.output = output
         self.created = datetime.utcnow()
+
+class RootFactory(object):
+    __acl__ = [ (Allow, Everyone, 'view'),
+                (Allow, 'group:editors', 'edit') ]
+    def __init__(self, request):
+        pass

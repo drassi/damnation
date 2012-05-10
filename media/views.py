@@ -3,14 +3,17 @@ import simplejson as json
 from redis import Redis
 
 from pyramid.response import Response
-from pyramid.view import view_config
+from pyramid.view import view_config, forbidden_view_config
+from pyramid.security import remember, forget, authenticated_userid
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 
 from sqlalchemy.exc import DBAPIError
 
 from .models import DBSession, Asset, DerivativeAsset
 from .config import Config
+from .security import USERS
 
-@view_config(route_name='list-assets', renderer='list-assets.mako')
+@view_config(route_name='list-assets', renderer='list-assets.mako', permission='edit')
 def list_assets(request):
     assets = DBSession.query(Asset).join(DerivativeAsset).all()
     page_assets, page_screenshots = [], {}
@@ -26,16 +29,18 @@ def list_assets(request):
             page_assets.append(asset)
             asset.screenshot = screenshot
             asset.thumbnail = thumbnail
-        if len(page_assets) >= 20:
-            break
+    logged_in = authenticated_userid(request)
     return {
       'page_assets' : page_assets,
       'base_media_url' : Config.BASE_MEDIA_URL,
+      'logged_in' : logged_in,
     }
 
-@view_config(route_name='show-asset', renderer='show-asset.mako')
+@view_config(route_name='show-asset', renderer='show-asset.mako', permission='edit')
 def show_asset(request):
-    asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==request.matchdict['id']).one()
+    asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==request.matchdict['id']).first()
+    if not asset:
+        return HTTPNotFound('No such asset')
     transcode_matches = [d.path for d in asset.derivatives if d.derivative_type == 'transcode.360.flv']
     youtube_matches = [json.loads(d.path) for d in asset.derivatives if d.derivative_type == 'youtube']
     if not transcode_matches:
@@ -43,9 +48,11 @@ def show_asset(request):
     transcode = transcode_matches[0]
     asset.transcode = transcode
     asset.youtube = youtube_matches[0] if youtube_matches else None
+    logged_in = authenticated_userid(request)
     return {
         'asset' : asset,
         'base_media_url' : Config.BASE_MEDIA_URL,
+        'logged_in' : logged_in,
     }
 
 @view_config(route_name='youtube-upload', renderer='json')
@@ -73,3 +80,37 @@ def youtube_upload(request):
 @view_config(route_name='debug', renderer='json')
 def debug(request):
     raise Exception()
+
+@view_config(route_name='login', renderer='templates/login.pt')
+@forbidden_view_config(renderer='templates/login.pt')
+def login(request):
+    login_url = request.route_url('login')
+    referrer = request.url
+    if referrer == login_url:
+        referrer = '/' # never use the login form itself as came_from
+    came_from = request.params.get('came_from', referrer)
+    message = ''
+    login = ''
+    password = ''
+    if 'form.submitted' in request.params:
+        login = request.params['login']
+        password = request.params['password']
+        if USERS.get(login) == password:
+            headers = remember(request, login)
+            return HTTPFound(location = came_from,
+                             headers = headers)
+        message = 'Failed login'
+
+    return dict(
+        message = message,
+        url = request.application_url + '/login',
+        came_from = came_from,
+        login = login,
+        password = password,
+        )
+
+@view_config(route_name='logout')
+def logout(request):
+    headers = forget(request)
+    return HTTPFound(location = request.route_url('list-assets'),
+                     headers = headers)
