@@ -71,9 +71,3 @@ class DerivativeAsset(Base):
         self.cmd = cmd
         self.output = output
         self.created = datetime.utcnow()
-
-class RootFactory(object):
-    __acl__ = [ (Allow, Everyone, 'view'),
-                (Allow, 'group:editors', 'edit') ]
-    def __init__(self, request):
-        pass

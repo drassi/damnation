@@ -10,10 +10,10 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from sqlalchemy.exc import DBAPIError
 
 from .models import DBSession, Asset, DerivativeAsset
+from .auth import User
 from .config import Config
-from .security import USERS
 
-@view_config(route_name='list-assets', renderer='list-assets.mako', permission='edit')
+@view_config(route_name='list-assets', renderer='list-assets.mako', permission='read')
 def list_assets(request):
     assets = DBSession.query(Asset).join(DerivativeAsset).all()
     page_assets, page_screenshots = [], {}
@@ -36,7 +36,7 @@ def list_assets(request):
       'logged_in' : logged_in,
     }
 
-@view_config(route_name='show-asset', renderer='show-asset.mako', permission='edit')
+@view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
     asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==request.matchdict['id']).first()
     if not asset:
@@ -55,7 +55,7 @@ def show_asset(request):
         'logged_in' : logged_in,
     }
 
-@view_config(route_name='youtube-upload', renderer='json')
+@view_config(route_name='youtube-upload', renderer='json', permission='write')
 def youtube_upload(request):
     asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==request.params['id']).one()
     youtube_matches = [d.path for d in asset.derivatives if d.derivative_type == 'youtube']
@@ -90,27 +90,24 @@ def login(request):
         referrer = '/' # never use the login form itself as came_from
     came_from = request.params.get('came_from', referrer)
     message = ''
-    login = ''
-    password = ''
+    username = ''
     if 'form.submitted' in request.params:
-        login = request.params['login']
+        username = request.params['login']
         password = request.params['password']
-        if USERS.get(login) == password:
-            headers = remember(request, login)
-            return HTTPFound(location = came_from,
-                             headers = headers)
-        message = 'Failed login'
+        user = DBSession.query(User).filter(User.username == username).first()
+        if user and user.active and user.validate_password(password):
+            headers = remember(request, username)
+            return HTTPFound(location = came_from, headers = headers)
+        message = 'Failed to authenticate'
 
     return dict(
         message = message,
         url = request.application_url + '/login',
         came_from = came_from,
-        login = login,
-        password = password,
-        )
+        login = username,
+    )
 
 @view_config(route_name='logout')
 def logout(request):
     headers = forget(request)
-    return HTTPFound(location = request.route_url('list-assets'),
-                     headers = headers)
+    return HTTPFound(location = request.route_url('list-assets'), headers = headers)

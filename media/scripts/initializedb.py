@@ -4,16 +4,15 @@ import transaction
 
 from sqlalchemy import engine_from_config
 
-from pyramid.paster import (
-    get_appsettings,
-    setup_logging,
-    )
+from pyramid.paster import get_appsettings, setup_logging
 
-from ..models import (
-    DBSession,
-    Asset,
-    Base,
-    )
+from ..models import DBSession, Base
+from ..auth import User
+
+def make_superuser():
+    user = User(u'root', u'password')
+    user.superuser = True
+    DBSession.add(user)
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
@@ -31,4 +30,4 @@ def main(argv=sys.argv):
     DBSession.configure(bind=engine)
     Base.metadata.create_all(engine)
     with transaction.manager:
-        pass
+        make_superuser()
