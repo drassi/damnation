@@ -22,7 +22,7 @@ class DerivativeAsset
       output.push self.run_cmd cmd
     end
     db = PG.connect(:dbname => 'damnation', :user => 'damnation')
-    db.exec 'insert into derivative_assets ("asset_id", "derivative_type", "path", "cmd", "output", "created") values ($1, $2, $3, $4, $5, now()))',
+    db.exec 'insert into derivative_assets ("asset_id", "derivative_type", "path", "cmd", "output", "created") values ($1, $2, $3, $4, $5, now())',
              [asset_id, derivative_type, result_path, JSON.dump(cmds), JSON.dump(output)]
   end
 end

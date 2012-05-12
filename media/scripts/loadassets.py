@@ -52,17 +52,19 @@ def load_asset(original_abspath):
         os.makedirs(import_absdir)
     original_basename = os.path.basename(original_abspath)
     _, extension = os.path.splitext(original_basename)
-    new_filename = md5 + extension
+    new_filename = md5 + extension.lower()
     import_path = os.path.join(import_dir, new_filename)
     import_abspath = os.path.join(import_absdir, new_filename)
-    subprocess.check_call(['cp', original_abspath, import_abspath])
+    subprocess.check_call(['ln', '-s', original_abspath, import_abspath])
 
     # persist asset metadata to the db
     size = os.path.getsize(import_abspath)
-    asset = Asset('video', import_path, md5, size, duration, width, height, original_basename, original_abspath)
+    asset = Asset('video', import_path, md5, size, duration, width, height, unicode(original_basename), unicode(original_abspath))
     print 'imported %s to %s size=%d' % (original_abspath, import_abspath, size)
     DBSession.add(asset)
     DBSession.flush()
+
+    queue_transcode_and_screenshot(asset)
 
     return asset
 
@@ -87,7 +89,7 @@ def queue_transcode_and_screenshot(asset):
     flv_derivative_type = 'transcode.360.flv'
     flv_outpath = '%s.%s.%s' % (inpath, rand4(), flv_derivative_type)
     flv_outfile = os.path.join(Config.ASSET_ROOT, flv_outpath)
-    flv_cmd = "ffmpeg -i %s -f flv -vf 'scale=-1:360' -r 15 -b 1000 -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, flv_outfile)
+    flv_cmd = "ffmpeg -i %s -f flv -vf 'scale=-1:360' -vcodec libx264 -r 15 -b 256k -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, flv_outfile)
     flvtool_cmd = 'flvtool2 -U %s' % flv_outfile
     flv_cmds = [flv_cmd, flvtool_cmd]
 
@@ -142,6 +144,4 @@ def main(argv=sys.argv):
     print 'importing assets from %s..' % asset_path
     with transaction.manager:
         new_assets = load_assets(asset_path)
-        for asset in new_assets:
-            queue_transcode_and_screenshot(asset)
     print 'done importing %d assets' % len(new_assets)

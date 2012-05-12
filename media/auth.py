@@ -1,9 +1,10 @@
 import os
 import random
 import string
+from datetime import datetime
 from passlib.hash import bcrypt
 
-from sqlalchemy import Column, Integer, Unicode, Date, Boolean
+from sqlalchemy import Column, Integer, Text, Unicode, DateTime, Boolean
 
 from pyramid.security import Allow, Everyone, authenticated_userid
 
@@ -30,18 +31,20 @@ class User(Base):
 
     __tablename__ = 'users'
 
-    id = Column(Unicode, primary_key=True)
+    id = Column(Text, primary_key=True)
     username = Column(Unicode, nullable=False, unique=True)
-    password = Column(Unicode, nullable=False)
+    password = Column(Text, nullable=False)
     active = Column(Boolean, nullable=False)
     superuser = Column(Boolean, nullable=False)
+    created = Column(DateTime, nullable=False)
 
     def __init__(self, username, password):
-        self.id = unicode(''.join(random.choice(string.ascii_lowercase + string.digits) for x in range(6)))
+        self.id = ''.join(random.choice(string.ascii_lowercase + string.digits) for x in range(6))
         self.username = username
-        self.password = unicode(bcrypt.encrypt(password))
+        self.password = bcrypt.encrypt(password)
         self.active = True
         self.superuser = False
+        self.created = datetime.utcnow()
 
     def validate_password(self, password):
         return bcrypt.verify(password, self.password)

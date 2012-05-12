@@ -1,7 +1,7 @@
 import simplejson as json
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, Text, Date, ForeignKey
+from sqlalchemy import Column, Integer, Text, Unicode, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship, backref
 from zope.sqlalchemy import ZopeTransactionExtension
@@ -23,10 +23,10 @@ class Asset(Base):
     duration = Column(Integer, nullable=False)
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
-    title = Column(Text, nullable=False)
-    metadata_json = Column(Text, nullable=False)
+    title = Column(Unicode, nullable=False)
+    metadata_json = Column(Unicode, nullable=False)
     original_abspath = Column(Text, nullable=False)
-    created = Column(Date, nullable=False)
+    created = Column(DateTime, nullable=False)
 
     def __init__(self, asset_type, path, md5, size, duration, width, height, title, original_abspath):
         self.asset_type = asset_type
@@ -48,7 +48,7 @@ class Asset(Base):
         return json.loads(self.metadata_json)
 
     def set_metadata(self, metadata):
-        self.metadata_json = json.dumps(metadata)
+        self.metadata_json = unicode(json.dumps(metadata))
 
 class DerivativeAsset(Base):
 
@@ -60,7 +60,7 @@ class DerivativeAsset(Base):
     path = Column(Text, nullable=False)
     cmd = Column(Text)
     output = Column(Text)
-    created = Column(Date, nullable=False)
+    created = Column(DateTime, nullable=False)
 
     parent = relationship(Asset, backref='derivatives')
 
