@@ -59,7 +59,7 @@ def load_asset(original_abspath):
 
     # persist asset metadata to the db
     size = os.path.getsize(import_abspath)
-    asset = Asset('video', import_path, md5, size, duration, width, height, unicode(original_basename), unicode(original_abspath))
+    asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), unicode(original_abspath))
     print 'imported %s to %s size=%d' % (original_abspath, import_abspath, size)
     DBSession.add(asset)
     DBSession.flush()
@@ -79,8 +79,8 @@ def load_assets(asset_root):
                 asset_ids.append(asset_id)
     return asset_ids
 
-def rand4():
-    return ''.join(random.choice(string.lowercase + string.digits) for i in xrange(4))
+def rand(n):
+    return ''.join(random.choice(string.lowercase + string.digits) for i in xrange(n))
 
 def queue_transcode_and_screenshot(asset_id):
 
@@ -90,7 +90,7 @@ def queue_transcode_and_screenshot(asset_id):
     infile = os.path.join(Config.ASSET_ROOT, inpath)
 
     mp4_derivative_type = 'transcode.360.mp4'
-    mp4_outpath = '%s.%s.%s' % (inpath, rand4(), mp4_derivative_type)
+    mp4_outpath = '%s.%s.%s' % (inpath, rand(4), mp4_derivative_type)
     mp4_outfile = os.path.join(Config.ASSET_ROOT, mp4_outpath)
     mp4_tmpfile = mp4_outfile + '.tmp'
     mp4_cmd = "avconv -i %s -f mp4 -vf 'scale=-1:360' -r 15 -vcodec libx264 -b 256k -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, mp4_tmpfile)
@@ -101,7 +101,7 @@ def queue_transcode_and_screenshot(asset_id):
     num_screenshots = 14
     screenshot_derivative_type = 'screenshot.180.gif'
     screenshot_ffmpeg_filedirective = 'screenshot.180.%%02d.%d.png' % num_screenshots
-    screenshot_outprefix = '%s.%s' % (inpath, rand4())
+    screenshot_outprefix = '%s.%s' % (inpath, rand(4))
     screenshot_png_outfiles = os.path.join(Config.ASSET_ROOT, '%s.%s' % (screenshot_outprefix, screenshot_ffmpeg_filedirective))
     screenshot_rate = 1.0 * num_screenshots / asset.duration
     screenshot_pngs = 'screenshot.180.*.%d.png' % num_screenshots
@@ -118,7 +118,7 @@ def queue_transcode_and_screenshot(asset_id):
     screenshot_cmds = [screenshot_cmd, mogrify_cmd, gifsicle_cmd, rm_cmd]
 
     thumbnail_derivative_type = 'thumbnail.180.png'
-    thumbnail_outpath = '%s.%s.%s' % (inpath, rand4(), thumbnail_derivative_type)
+    thumbnail_outpath = '%s.%s.%s' % (inpath, rand(4), thumbnail_derivative_type)
     thumbnail_outfile = os.path.join(Config.ASSET_ROOT, thumbnail_outpath)
     thumbnail_location_secs = asset.duration / 4
     thumbnail_cmd = "avconv -ss %d -i %s -t 1 -s 240x180 -vframes 1 -vcodec png -loglevel fatal %s" % (thumbnail_location_secs, infile, thumbnail_outfile)

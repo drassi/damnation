@@ -15,7 +15,7 @@ class Asset(Base):
 
     __tablename__ = 'assets'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Text, primary_key=True)
     asset_type = Column(Text, nullable=False)
     path = Column(Text, nullable=False)
     md5 = Column(Text, nullable=False)
@@ -28,7 +28,8 @@ class Asset(Base):
     original_abspath = Column(Text, nullable=False)
     created = Column(DateTime, nullable=False)
 
-    def __init__(self, asset_type, path, md5, size, duration, width, height, title, original_abspath):
+    def __init__(self, id, asset_type, path, md5, size, duration, width, height, title, original_abspath):
+        self.id = id
         self.asset_type = asset_type
         self.path = path
         self.md5 = md5
@@ -55,7 +56,7 @@ class DerivativeAsset(Base):
     __tablename__ = 'derivative_assets'
 
     id = Column(Integer, primary_key=True)
-    asset_id = Column(Integer, ForeignKey('assets.id'), nullable=False)
+    asset_id = Column(Text, ForeignKey('assets.id'), nullable=False)
     derivative_type = Column(Text, nullable=False)
     path = Column(Text, nullable=False)
     cmd = Column(Text)

@@ -38,7 +38,8 @@ def list_assets(request):
 
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
-    asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==request.matchdict['id']).first()
+    asset_id = request.matchdict['id']
+    asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==asset_id).first()
     if not asset:
         return HTTPNotFound('No such asset')
     transcode_matches = [d.path for d in asset.derivatives if d.derivative_type == 'transcode.360.mp4']
