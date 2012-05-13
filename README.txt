@@ -1,14 +1,14 @@
-media README
-==================
+A digital asset management system for collaboratively organizing and annotating video.
 
-Getting Started
----------------
+Built on:
 
-- cd <directory containing this file>
+* pyramid (python web framework)
+* resque (ruby queuing library)
+* libav/ffmpeg (video transcoding)
+* postgresql (sql database)
+* redis (in-memory key/value store)
+* nginx (front webserver)
+* uwsgi (wsgi webserver)
+* flowplayer (flash video player)
 
-- $venv/bin/python setup.py develop
-
-- $venv/bin/populate_media development.ini
-
-- $venv/bin/pserve development.ini
-
+Read the INSTALL file to set it up yourself.
