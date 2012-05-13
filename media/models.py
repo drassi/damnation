@@ -1,7 +1,7 @@
 import simplejson as json
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, Text, Unicode, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Text, Unicode, Boolean, DateTime, ForeignKey, Table
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship, backref
 from zope.sqlalchemy import ZopeTransactionExtension
@@ -71,4 +71,30 @@ class DerivativeAsset(Base):
         self.path = path
         self.cmd = cmd
         self.output = output
+        self.created = datetime.utcnow()
+
+collection_assets = Table(
+    'collection_assets',
+    Base.metadata,
+    Column('collection_id', Text, ForeignKey('collections.id'), primary_key=True),
+    Column('asset_id', Text, ForeignKey('assets.id'), primary_key=True)
+)
+
+class Collection(Base):
+
+    __tablename__ = 'collections'
+
+    id = Column(Text, primary_key=True)
+    name = Column(Unicode, nullable=False)
+    description = Column(Unicode, nullable=False)
+    frozen = Column(Boolean, nullable=False)
+    created = Column(DateTime, nullable=False)
+
+    assets = relationship(Asset, secondary=collection_assets, backref='collections')
+
+    def __init__(self, id, name, description, frozen):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.frozen = frozen
         self.created = datetime.utcnow()

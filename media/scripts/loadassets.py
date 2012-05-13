@@ -11,7 +11,7 @@ import transaction
 from sqlalchemy import engine_from_config
 from pyramid.paster import get_appsettings, setup_logging
 
-from ..models import DBSession, Base, Asset
+from ..models import DBSession, Base, Asset, Collection
 from ..config import Config
 
 REDIS = redis.Redis()
@@ -131,21 +131,29 @@ def queue_transcode_and_screenshot(asset_id):
     REDIS.rpush('resque:queue:thumbnail',
                 json.dumps({'class': 'ThumbnailAsset', 'args': [asset.id, thumbnail_derivative_type, thumbnail_cmds, thumbnail_outpath]}))
 
+def create_collection(new_asset_ids, import_name):
+    with transaction.manager:
+        collection = Collection(rand(6), import_name, '', True)
+        collection.assets = DBSession.query(Asset).filter(Asset.id.in_(new_asset_ids)).all()
+        DBSession.add(collection)
+
 def usage(argv):
     cmd = os.path.basename(argv[0])
-    print('usage: %s <config_uri> <asset_basepath>\n'
-          '(example: "%s development.ini /path/to/asset/dir")' % (cmd, cmd)) 
+    print('usage: %s <config_uri> <asset_basepath> <import_name>\n'
+          '(example: "%s development.ini /path/to/asset/dir \'brief title for import collection\'")' % (cmd, cmd)) 
     sys.exit(1)
 
 def main(argv=sys.argv):
-    if len(argv) != 3:
+    if len(argv) != 4:
         usage(argv)
     config_uri = argv[1]
     asset_path = argv[2]
+    import_name = argv[3]
     setup_logging(config_uri)
     settings = get_appsettings(config_uri)
     engine = engine_from_config(settings, 'sqlalchemy.')
     DBSession.configure(bind=engine)
     print 'importing assets from %s..' % asset_path
-    new_assets = load_assets(asset_path)
-    print 'done importing %d assets' % len(new_assets)
+    new_asset_ids = load_assets(asset_path)
+    create_collection(new_asset_ids, import_name)
+    print 'done importing %d assets' % len(new_asset_ids)

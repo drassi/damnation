@@ -9,13 +9,24 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 
 from sqlalchemy.exc import DBAPIError
 
-from .models import DBSession, Asset, DerivativeAsset
+from .models import DBSession, Asset, Collection, DerivativeAsset
 from .auth import User
 from .config import Config
 
-@view_config(route_name='list-assets', renderer='list-assets.mako', permission='read')
-def list_assets(request):
-    assets = DBSession.query(Asset).join(DerivativeAsset).all()
+@view_config(route_name='list-collections', renderer='list-collections.mako', permission='read')
+def list_collections(request):
+    collections = DBSession.query(Collection).all()
+    logged_in = authenticated_userid(request)
+    return {
+      'collections' : collections,
+      'logged_in' : logged_in,
+    }
+
+@view_config(route_name='show-collection', renderer='show-collection.mako', permission='read')
+def show_collection(request):
+    id = request.matchdict['id']
+    collection = DBSession.query(Collection).get(id)
+    assets = collection.assets
     page_assets, page_screenshots = [], {}
     for asset in assets:
         derivatives = asset.derivatives
