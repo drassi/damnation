@@ -64,34 +64,39 @@ def load_asset(original_abspath):
     DBSession.add(asset)
     DBSession.flush()
 
-    queue_transcode_and_screenshot(asset)
-
-    return asset
+    return asset.id
 
 def load_assets(asset_root):
     [REDIS.sadd('resque:queues', q) for q in ['transcode', 'screenshot', 'thumbnail', 'youtube']]
-    assets = []
+    asset_ids = []
     for dirpath, dirnames, filenames in os.walk(asset_root):
         for filename in filenames:
             abspath = os.path.abspath(os.path.join(dirpath, filename))
-            asset = load_asset(abspath)
-            if asset is not None:
-                assets.append(asset)
-    return assets
+            with transaction.manager:
+                asset_id = load_asset(abspath)
+            if asset_id is not None:
+                queue_transcode_and_screenshot(asset_id)
+                asset_ids.append(asset_id)
+    return asset_ids
 
 def rand4():
     return ''.join(random.choice(string.lowercase + string.digits) for i in xrange(4))
 
-def queue_transcode_and_screenshot(asset):
+def queue_transcode_and_screenshot(asset_id):
+
+    asset = DBSession.query(Asset).get(asset_id)
+
     inpath = asset.path
     infile = os.path.join(Config.ASSET_ROOT, inpath)
 
-    flv_derivative_type = 'transcode.360.flv'
-    flv_outpath = '%s.%s.%s' % (inpath, rand4(), flv_derivative_type)
-    flv_outfile = os.path.join(Config.ASSET_ROOT, flv_outpath)
-    flv_cmd = "ffmpeg -i %s -f flv -vf 'scale=-1:360' -vcodec libx264 -r 15 -b 256k -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, flv_outfile)
-    flvtool_cmd = 'flvtool2 -U %s' % flv_outfile
-    flv_cmds = [flv_cmd, flvtool_cmd]
+    mp4_derivative_type = 'transcode.360.mp4'
+    mp4_outpath = '%s.%s.%s' % (inpath, rand4(), mp4_derivative_type)
+    mp4_outfile = os.path.join(Config.ASSET_ROOT, mp4_outpath)
+    mp4_tmpfile = mp4_outfile + '.tmp'
+    mp4_cmd = "avconv -i %s -f mp4 -vf 'scale=-1:360' -r 15 -vcodec libx264 -b 256k -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, mp4_tmpfile)
+    faststart_cmd = 'qt-faststart %s %s' % (mp4_tmpfile, mp4_outfile)
+    rm_tmp_cmd = 'rm %s' % mp4_tmpfile
+    mp4_cmds = [mp4_cmd, faststart_cmd, rm_tmp_cmd]
 
     num_screenshots = 14
     screenshot_derivative_type = 'screenshot.180.gif'
@@ -116,11 +121,11 @@ def queue_transcode_and_screenshot(asset):
     thumbnail_outpath = '%s.%s.%s' % (inpath, rand4(), thumbnail_derivative_type)
     thumbnail_outfile = os.path.join(Config.ASSET_ROOT, thumbnail_outpath)
     thumbnail_location_secs = asset.duration / 4
-    thumbnail_cmd = "ffmpeg -i %s -ss %d -t 1 -s 240x180 -vframes 1 -vcodec png -loglevel fatal %s" % (infile, thumbnail_location_secs, thumbnail_outfile)
+    thumbnail_cmd = "avconv -ss %d -i %s -t 1 -s 240x180 -vframes 1 -vcodec png -loglevel fatal %s" % (thumbnail_location_secs, infile, thumbnail_outfile)
     thumbnail_cmds = [thumbnail_cmd]
 
     REDIS.rpush('resque:queue:transcode',
-                json.dumps({'class': 'TranscodeAsset', 'args': [asset.id, flv_derivative_type, flv_cmds, flv_outpath]}))
+                json.dumps({'class': 'TranscodeAsset', 'args': [asset.id, mp4_derivative_type, mp4_cmds, mp4_outpath]}))
     REDIS.rpush('resque:queue:screenshot',
                 json.dumps({'class': 'ScreenshotAsset', 'args': [asset.id, screenshot_derivative_type, screenshot_cmds, screenshot_outpath]}))
     REDIS.rpush('resque:queue:thumbnail',
@@ -142,6 +147,5 @@ def main(argv=sys.argv):
     engine = engine_from_config(settings, 'sqlalchemy.')
     DBSession.configure(bind=engine)
     print 'importing assets from %s..' % asset_path
-    with transaction.manager:
-        new_assets = load_assets(asset_path)
+    new_assets = load_assets(asset_path)
     print 'done importing %d assets' % len(new_assets)
