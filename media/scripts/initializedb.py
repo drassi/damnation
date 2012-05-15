@@ -6,12 +6,19 @@ from sqlalchemy import engine_from_config
 
 from pyramid.paster import get_appsettings, setup_logging
 
-from ..models import DBSession, Base
-from ..auth import User
+from ..models import DBSession, Base, User
 
 def make_superuser():
-    user = User(u'root', u'password')
+    user = User(u'root', u'root')
     user.superuser = True
+    DBSession.add(user)
+
+def make_editor():
+    user = User(u'editor', u'editor')
+    DBSession.add(user)
+
+def make_viewer():
+    user = User(u'viewer', u'viewer')
     DBSession.add(user)
 
 def usage(argv):
@@ -31,3 +38,5 @@ def main(argv=sys.argv):
     Base.metadata.create_all(engine)
     with transaction.manager:
         make_superuser()
+        make_editor()
+        make_viewer()

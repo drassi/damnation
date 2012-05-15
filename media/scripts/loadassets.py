@@ -93,7 +93,7 @@ def queue_transcode_and_screenshot(asset_id):
     mp4_outpath = '%s.%s.%s' % (inpath, rand(4), mp4_derivative_type)
     mp4_outfile = os.path.join(Config.ASSET_ROOT, mp4_outpath)
     mp4_tmpfile = mp4_outfile + '.tmp'
-    mp4_cmd = "avconv -i %s -f mp4 -vf 'scale=-1:360' -r 15 -vcodec libx264 -b 256k -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, mp4_tmpfile)
+    mp4_cmd = "avconv -i %s -f mp4 -vf 'scale=-1:360' -r 15 -vcodec libx264 -b 512k -g 10 -acodec libmp3lame -ar 22050 -ab 48000 -ac 1 -y %s" % (infile, mp4_tmpfile)
     faststart_cmd = 'qt-faststart %s %s' % (mp4_tmpfile, mp4_outfile)
     rm_tmp_cmd = 'rm %s' % mp4_tmpfile
     mp4_cmds = [mp4_cmd, faststart_cmd, rm_tmp_cmd]

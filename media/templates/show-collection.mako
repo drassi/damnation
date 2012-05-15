@@ -29,7 +29,7 @@
   </head>
   <body>
     % for asset in page_assets:
-      <div class="asset-container" data-asset-id="{asset.id}" data-asset-url="${request.route_path('show-asset', id=asset.id)}">
+      <div class="asset-container" data-asset-id="{asset.id}" data-asset-url="${request.route_path('show-asset', asset_id=asset.id)}">
         <div>
           <div><img class="screenshot" src="${base_media_url}/${asset.thumbnail}" data-still-src="${base_media_url}/${asset.thumbnail}" data-moving-src="${base_media_url}/${asset.screenshot}"></img></div>
           <div>${asset.title}</div>

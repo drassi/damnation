@@ -9,7 +9,7 @@
   <body>
     % for collection in collections:
       <div>
-        <a href="${request.route_path('show-collection', id=collection.id)}">${collection.name}</a>
+        <a href="${request.route_path('show-collection', collection_id=collection.id)}">${collection.name}</a>
       </div>
     % endfor
   </body>

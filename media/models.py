@@ -1,5 +1,8 @@
+import random
+import string
 import simplejson as json
 from datetime import datetime
+from passlib.hash import bcrypt
 
 from sqlalchemy import Column, Integer, Text, Unicode, Boolean, DateTime, ForeignKey, Table
 from sqlalchemy.ext.declarative import declarative_base
@@ -91,6 +94,7 @@ class Collection(Base):
     created = Column(DateTime, nullable=False)
 
     assets = relationship(Asset, secondary=collection_assets, backref='collections')
+    grants = relationship('CollectionGrant', backref='collection')
 
     def __init__(self, id, name, description, frozen):
         self.id = id
@@ -98,3 +102,40 @@ class Collection(Base):
         self.description = description
         self.frozen = frozen
         self.created = datetime.utcnow()
+
+class User(Base):
+
+    __tablename__ = 'users'
+
+    id = Column(Text, primary_key=True)
+    username = Column(Unicode, nullable=False, unique=True)
+    password = Column(Text, nullable=False)
+    active = Column(Boolean, nullable=False)
+    superuser = Column(Boolean, nullable=False)
+    created = Column(DateTime, nullable=False)
+
+    def __init__(self, username, password):
+        self.id = ''.join(random.choice(string.ascii_lowercase + string.digits) for x in range(6))
+        self.username = username
+        self.password = bcrypt.encrypt(password)
+        self.active = True
+        self.superuser = False
+        self.created = datetime.utcnow()
+
+    def validate_password(self, password):
+        return bcrypt.verify(password, self.password)
+
+class CollectionGrant(Base):
+
+    __tablename__ = 'collection_grants'
+
+    collection_id = Column(Text, ForeignKey('collections.id'), primary_key=True)
+    user_id = Column(Text, ForeignKey('users.id'), primary_key=True)
+    grant_type = Column(Text, nullable=False)
+
+    user = relationship(User, backref='grants')
+
+    def __init(self, collection, user, grant_type):
+        self.collection_id = collection.id
+        self.user_id = user.id
+        self.grant_type = grant_type

@@ -5,12 +5,11 @@ from redis import Redis
 from pyramid.response import Response
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.security import remember, forget, authenticated_userid
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPForbidden
 
 from sqlalchemy.exc import DBAPIError
 
-from .models import DBSession, Asset, Collection, DerivativeAsset
-from .auth import User
+from .models import DBSession, User, Asset, Collection, DerivativeAsset
 from .config import Config
 
 @view_config(route_name='list-collections', renderer='list-collections.mako', permission='read')
@@ -24,7 +23,7 @@ def list_collections(request):
 
 @view_config(route_name='show-collection', renderer='show-collection.mako', permission='read')
 def show_collection(request):
-    id = request.matchdict['id']
+    id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(id)
     assets = collection.assets
     page_assets, page_screenshots = [], {}
@@ -49,7 +48,7 @@ def show_collection(request):
 
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
-    asset_id = request.matchdict['id']
+    asset_id = request.matchdict['asset_id']
     asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==asset_id).first()
     if not asset:
         return HTTPNotFound('No such asset')
@@ -94,7 +93,6 @@ def debug(request):
     raise Exception()
 
 @view_config(route_name='login', renderer='templates/login.pt')
-@forbidden_view_config(renderer='templates/login.pt')
 def login(request):
     login_url = request.route_url('login')
     referrer = request.url
@@ -122,4 +120,11 @@ def login(request):
 @view_config(route_name='logout')
 def logout(request):
     headers = forget(request)
-    return HTTPFound(location = request.route_url('list-assets'), headers = headers)
+    return HTTPFound(location = request.route_url('list-collections'), headers = headers)
+
+@forbidden_view_config()
+def forbidden(request):
+    if authenticated_userid(request):
+        return HTTPForbidden()
+    else:
+        return HTTPFound(location = request.route_url('login', _query={'came_from' : request.url}))

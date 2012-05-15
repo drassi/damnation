@@ -1,50 +1,48 @@
-import os
-import random
-import string
-from datetime import datetime
-from passlib.hash import bcrypt
-
-from sqlalchemy import Column, Integer, Text, Unicode, DateTime, Boolean
-
 from pyramid.security import Allow, Everyone, authenticated_userid
 
-from .models import Base
+from .models import DBSession, User, Asset, Collection, CollectionGrant
 
 class RootFactory(object):
 
     def __init__(self, request):
         self.request = request
-        self.user_id = authenticated_userid(request)
+        self.username = authenticated_userid(request)
+        self.authenticated = self.username is not None
+        self.matched_route = request.matched_route
+        if self.authenticated:
+            self.user = DBSession.query(User).filter(User.username==self.username).one()
+
+    @staticmethod
+    def _get_collection_grants(user_id, collection_ids):
+        grants = DBSession.query(CollectionGrant) \
+                          .filter(CollectionGrant.user_id==user_id) \
+                          .filter(CollectionGrant.collection_id.in_(collection_ids)) \
+                          .all()
+        return set([grant.grant_type for grant in grants])
 
     @property
     def __acl__(self):
-        allow_read = True # some logic here
-        allow_write = False # some logic here
-        acls = []
-        if allow_read:
-            acls.append((Allow, Everyone, 'read'))
-        if allow_write:
-            acls.append((Allow, Everyone, 'write'))
-        return acls
-
-class User(Base):
-
-    __tablename__ = 'users'
-
-    id = Column(Text, primary_key=True)
-    username = Column(Unicode, nullable=False, unique=True)
-    password = Column(Text, nullable=False)
-    active = Column(Boolean, nullable=False)
-    superuser = Column(Boolean, nullable=False)
-    created = Column(DateTime, nullable=False)
-
-    def __init__(self, username, password):
-        self.id = ''.join(random.choice(string.ascii_lowercase + string.digits) for x in range(6))
-        self.username = username
-        self.password = bcrypt.encrypt(password)
-        self.active = True
-        self.superuser = False
-        self.created = datetime.utcnow()
-
-    def validate_password(self, password):
-        return bcrypt.verify(password, self.password)
+        if not self.authenticated:
+            return []
+        matchdict = self.request.matchdict
+        permissions = set()
+        if self.matched_route and self.matched_route.name in ['list-collections']:
+            permissions.add('read')
+        elif 'collection_id' in matchdict:
+            grants = self._get_collection_grants(self.user.id, [matchdict['collection_id']])
+            if 'admin' in grants or self.user.superuser:
+                permissions.update(['read', 'write', 'admin'])
+            if 'write' in grants:
+                permissions.update(['read', 'write'])
+            if 'read' in grants:
+                permissions.update(['read'])
+        elif 'asset_id' in matchdict:
+            asset = DBSession.query(Asset).get(matchdict['asset_id'])
+            grants = self._get_collection_grants(self.user.id, [collection.id for collection in asset.collections])
+            if 'write' in grants or self.user.superuser:
+                permissions.update(['read', 'write'])
+            if 'read' in grants:
+                permissions.update(['read'])
+        else:
+            raise Exception('not sure how to generate ACLs for this request')
+        return [(Allow, Everyone, permission) for permission in permissions]
