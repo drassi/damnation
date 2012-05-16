@@ -17,13 +17,19 @@ def main(global_config, **settings):
     config.set_authentication_policy(authn_policy)
     config.set_authorization_policy(authz_policy)
     config.add_static_view('static', 'static', cache_max_age=3600)
-    config.add_route('list-collections', '/')
-    config.add_route('show-collection', '/collection/{collection_id}')
-    config.add_route('show-asset', '/asset/{asset_id}')
-    config.add_route('youtube-upload', '/ajax/youtube-upload')
+
+    config.add_route('list-collections', '/', request_method='GET')
+    config.add_route('show-collection', '/collection/{collection_id}', request_method='GET')
+    config.add_route('admin-collection', '/collection/admin/{collection_id}', request_method='GET')
+    config.add_route('admin-collection-save', '/collection/admin/save/{collection_id}', request_method='POST')
+
+    config.add_route('show-asset', '/asset/{asset_id}', request_method='GET')
+    config.add_route('upload-asset-to-youtube', '/asset/youtube-upload/{asset_id}', request_method='POST')
+
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
     config.add_route('debug', '/debug')
+
     config.scan()
     return config.make_wsgi_app()
 

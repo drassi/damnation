@@ -5,7 +5,7 @@ from redis import Redis
 from pyramid.response import Response
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.security import remember, forget, authenticated_userid
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPForbidden
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPSeeOther, HTTPForbidden
 
 from sqlalchemy.exc import DBAPIError
 
@@ -46,6 +46,22 @@ def show_collection(request):
       'logged_in' : logged_in,
     }
 
+@view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')
+def admin_collection(request):
+    id = request.matchdict['collection_id']
+    collection = DBSession.query(Collection).get(id)
+    grants = [(grant.user_id, grant.user.username, grant.grant_type) for grant in collection.grants]
+    return {
+      'collection_id' : id,
+      'grants' : grants,
+    }
+
+@view_config(route_name='admin-collection-save', permission='admin')
+def admin_collection_save(request):
+    id = request.matchdict['collection_id']
+    collection = DBSession.query(Collection).get(id)
+    raise Exception()
+
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
     asset_id = request.matchdict['asset_id']
@@ -66,7 +82,7 @@ def show_asset(request):
         'logged_in' : logged_in,
     }
 
-@view_config(route_name='youtube-upload', renderer='json', permission='write')
+@view_config(route_name='upload-asset-to-youtube', renderer='json', permission='write')
 def youtube_upload(request):
     asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==request.params['id']).one()
     youtube_matches = [d.path for d in asset.derivatives if d.derivative_type == 'youtube']
@@ -107,7 +123,7 @@ def login(request):
         user = DBSession.query(User).filter(User.username == username).first()
         if user and user.active and user.validate_password(password):
             headers = remember(request, username)
-            return HTTPFound(location = came_from, headers = headers)
+            return HTTPSeeOther(location = came_from, headers = headers)
         message = 'Failed to authenticate'
 
     return dict(
@@ -120,11 +136,11 @@ def login(request):
 @view_config(route_name='logout')
 def logout(request):
     headers = forget(request)
-    return HTTPFound(location = request.route_url('list-collections'), headers = headers)
+    return HTTPSeeOther(location = request.route_url('list-collections'), headers = headers)
 
 @forbidden_view_config()
 def forbidden(request):
     if authenticated_userid(request):
         return HTTPForbidden()
     else:
-        return HTTPFound(location = request.route_url('login', _query={'came_from' : request.url}))
+        return HTTPSeeOther(location = request.route_url('login', _query={'came_from' : request.url}))
