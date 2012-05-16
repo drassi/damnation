@@ -135,7 +135,7 @@ class CollectionGrant(Base):
 
     user = relationship(User, backref='grants')
 
-    def __init(self, collection, user, grant_type):
+    def __init__(self, collection, user, grant_type):
         self.collection_id = collection.id
         self.user_id = user.id
         self.grant_type = grant_type

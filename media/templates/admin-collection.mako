@@ -8,7 +8,10 @@
   </head>
   <body>
     <form action="${request.route_path('admin-collection-save', collection_id=collection_id)}" method="post">
-      % for user_id, user_name, grant_type in grants:
+      <p>
+        Change or revoke current permissions:<br />
+        <small>(Read allows a user to view the collection, Write allows metadata modification of assets in the collection, admin allows adding/removing assets and users to the collection)</small>
+       % for user_id, user_name, grant_type in grants:
         <div>
           ${user_name}
           <input type="radio" name="grant_${user_id}" id="grant_${user_id}_read" value="read" ${'checked ' if grant_type=='read' else ''}/>
@@ -17,9 +20,27 @@
           <label for="grant_${user_id}_write">Write</label>
           <input type="radio" name="grant_${user_id}" id="grant_${user_id}_admin" value="admin" ${'checked ' if grant_type=='admin' else ''}/>
           <label for="grant_${user_id}_admin">Admin</label>
+          <input type="radio" name="grant_${user_id}" id="revoke_${user_id}" value="revoke" />
+          <label for="revoke_${user_id}">Revoke permission</label>
         </div>
-      % endfor
-      <input type="submit" name="submit" value="Save Permissions" />
+       % endfor
+      </p>
+      <p>
+        Grant new permissions for an existing user:<br />
+        <small>(Enter the user's exact username)</small>
+        <div>
+          <input type="text" name="new_username" value="" />
+          <input type="radio" name="new_grant" id="new_grant_read" value="read" checked />
+          <label for="new_grant_read">Read</label>
+          <input type="radio" name="new_grant" id="new_grant_write" value="write" />
+          <label for="new_grant_write">Write</label>
+          <input type="radio" name="new_grant" id="new_grant_admin" value="admin" />
+          <label for="new_grant_admin">Admin</label>
+        </div>
+      </p>
+      <p>
+        <input type="submit" name="submit" value="Save all permission changes" />
+      </p>
     </form>
   </body>
 </html>

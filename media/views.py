@@ -9,7 +9,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPSeeOther, HTTPFo
 
 from sqlalchemy.exc import DBAPIError
 
-from .models import DBSession, User, Asset, Collection, DerivativeAsset
+from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant
 from .config import Config
 
 @view_config(route_name='list-collections', renderer='list-collections.mako', permission='read')
@@ -58,9 +58,34 @@ def admin_collection(request):
 
 @view_config(route_name='admin-collection-save', permission='admin')
 def admin_collection_save(request):
+
     id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(id)
-    raise Exception()
+
+    grants_to_save = dict([(key.replace('grant_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('grant_')]])
+    for grant in collection.grants:
+        if grant.user_id in grants_to_save:
+            grant_to_save = grants_to_save[grant.user_id]
+            if grant_to_save in ['read', 'write', 'admin']:
+                grant.grant_type = grant_to_save
+                DBSession.add(grant)
+            elif grant_to_save == 'revoke':
+                DBSession.delete(grant)
+            else:
+                raise Exception('i dont know about grant %s' % grant_to_save)
+
+    new_grant_username = request.params['new_username'].strip()
+    if new_grant_username:
+       user = DBSession.query(User).filter(User.username == new_grant_username).first()
+       if not user:
+           raise Exception('unable to locate user with username %s' % new_grant_username)
+       new_grant_type = request.params['new_grant']
+       if new_grant_type not in ['read', 'write', 'admin']:
+           raise Exception('i dont know about grant %s' % new_grant_type)
+       new_grant = CollectionGrant(collection, user, new_grant_type)
+       DBSession.add(new_grant)
+
+    return HTTPSeeOther(location = request.route_url('admin-collection', collection_id=id))
 
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
