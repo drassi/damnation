@@ -7,9 +7,10 @@
     <link rel="stylesheet" type="text/css" href="/static/css/list.css"></link>
   </head>
   <body>
-    % for collection in collections:
+    Your collections:
+    % for collection, count in collection_counts:
       <div>
-        <a href="${request.route_path('show-collection', collection_id=collection.id)}">${collection.name}</a>
+        <a href="${request.route_path('show-collection', collection_id=collection.id)}">${collection.name}</a> (${count} items)
       </div>
     % endfor
   </body>

@@ -7,9 +7,10 @@ from pyramid.view import view_config, forbidden_view_config
 from pyramid.security import remember, forget, authenticated_userid
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPSeeOther, HTTPForbidden
 
+from sqlalchemy import func
 from sqlalchemy.exc import DBAPIError
 
-from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant
+from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant, collection_assets
 from .config import Config
 
 def get_user(request):
@@ -20,9 +21,15 @@ def get_user(request):
 @view_config(route_name='list-collections', renderer='list-collections.mako', permission='read')
 def list_collections(request):
     user = get_user(request)
-    collections = DBSession.query(Collection).all()
+    collection_query = DBSession.query(Collection, func.count(Asset.id)) \
+                                .join(collection_assets) \
+                                .join(Asset) \
+                                .group_by(Collection.id)
+    if not user.superuser:
+        collection_query = collection_query.join(CollectionGrant).filter(CollectionGrant.user_id==user.id)
+    collection_counts = collection_query.all()
     return {
-      'collections' : collections,
+      'collection_counts' : collection_counts,
       'user' : user,
     }
 
