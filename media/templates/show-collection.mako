@@ -28,6 +28,11 @@
     </script>
   </head>
   <body>
+    <div>Collection <b>${collection.name}</b></div>
+    <div>Description: ${collection.description}</div>
+    % if show_admin_link:
+    <div><a href="${request.route_path('admin-collection', collection_id=collection.id)}">Admin collection</a></div>
+    % endif
     % for asset in page_assets:
       <div class="asset-container" data-asset-id="{asset.id}" data-asset-url="${request.route_path('show-asset', asset_id=asset.id)}">
         <div>

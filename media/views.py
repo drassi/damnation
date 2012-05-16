@@ -12,17 +12,23 @@ from sqlalchemy.exc import DBAPIError
 from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant
 from .config import Config
 
+def get_user(request):
+    username = authenticated_userid(request)
+    user = DBSession.query(User).filter(User.username==username).first()
+    return user
+
 @view_config(route_name='list-collections', renderer='list-collections.mako', permission='read')
 def list_collections(request):
+    user = get_user(request)
     collections = DBSession.query(Collection).all()
-    logged_in = authenticated_userid(request)
     return {
       'collections' : collections,
-      'logged_in' : logged_in,
+      'user' : user,
     }
 
 @view_config(route_name='show-collection', renderer='show-collection.mako', permission='read')
 def show_collection(request):
+    user = get_user(request)
     id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(id)
     assets = collection.assets
@@ -39,28 +45,38 @@ def show_collection(request):
             page_assets.append(asset)
             asset.screenshot = screenshot
             asset.thumbnail = thumbnail
-    logged_in = authenticated_userid(request)
+    grant = DBSession.query(CollectionGrant).filter(CollectionGrant.collection_id==id).filter(CollectionGrant.user_id==user.id).first()
+    show_admin_link = user.superuser or (grant is not None and grant.grant_type == 'admin')
     return {
+      'collection' : collection,
       'page_assets' : page_assets,
       'base_media_url' : Config.BASE_MEDIA_URL,
-      'logged_in' : logged_in,
+      'user' : user,
+      'show_admin_link' : show_admin_link,
     }
 
 @view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')
 def admin_collection(request):
+    user = get_user(request)
     id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(id)
     grants = [(grant.user_id, grant.user.username, grant.grant_type) for grant in collection.grants]
     return {
-      'collection_id' : id,
+      'collection' : collection,
       'grants' : grants,
+      'user' : user,
     }
 
 @view_config(route_name='admin-collection-save', permission='admin')
 def admin_collection_save(request):
 
+    user = get_user(request)
     id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(id)
+
+    collection.name = request.params['collection_name']
+    collection.description = request.params['collection_description']
+    DBSession.add(collection)
 
     grants_to_save = dict([(key.replace('grant_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('grant_')]])
     for grant in collection.grants:
@@ -85,7 +101,7 @@ def admin_collection_save(request):
        new_grant = CollectionGrant(collection, user, new_grant_type)
        DBSession.add(new_grant)
 
-    return HTTPSeeOther(location = request.route_url('admin-collection', collection_id=id))
+    return HTTPSeeOther(location = request.route_url('show-collection', collection_id=id))
 
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):

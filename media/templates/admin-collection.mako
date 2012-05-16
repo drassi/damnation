@@ -7,10 +7,19 @@
     <link rel="stylesheet" type="text/css" href="/static/css/list.css"></link>
   </head>
   <body>
-    <form action="${request.route_path('admin-collection-save', collection_id=collection_id)}" method="post">
+    <form action="${request.route_path('admin-collection-save', collection_id=collection.id)}" method="post">
+      Administer collection <b>${collection.name}</b>, <a href="${request.route_path('show-collection', collection_id=collection.id)}">click here</a> to return to the collection without saving.
+      <p>
+        Rename collection:
+        <input type="text" name="collection_name" value="${collection.name}" />
+      </p>
+      <p>
+        Edit description:
+        <textarea name="collection_description">${collection.description}</textarea>
+      </p>
       <p>
         Change or revoke current permissions:<br />
-        <small>(Read allows a user to view the collection, Write allows metadata modification of assets in the collection, admin allows adding/removing assets and users to the collection)</small>
+        <small>(Read allows a user to view the collection, Write allows metadata modification of assets in the collection, Admin allows modification of collection assets, users and metadata)</small>
        % for user_id, user_name, grant_type in grants:
         <div>
           ${user_name}
@@ -21,7 +30,7 @@
           <input type="radio" name="grant_${user_id}" id="grant_${user_id}_admin" value="admin" ${'checked ' if grant_type=='admin' else ''}/>
           <label for="grant_${user_id}_admin">Admin</label>
           <input type="radio" name="grant_${user_id}" id="revoke_${user_id}" value="revoke" />
-          <label for="revoke_${user_id}">Revoke permission</label>
+          <label for="revoke_${user_id}">Revoke all permission</label>
         </div>
        % endfor
       </p>
@@ -39,7 +48,7 @@
         </div>
       </p>
       <p>
-        <input type="submit" name="submit" value="Save all permission changes" />
+        <input type="submit" name="submit" value="Save all changes to collection" />
       </p>
     </form>
   </body>
