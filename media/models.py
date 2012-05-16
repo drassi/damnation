@@ -21,7 +21,7 @@ class Asset(Base):
     id = Column(Text, primary_key=True)
     asset_type = Column(Text, nullable=False)
     path = Column(Text, nullable=False)
-    md5 = Column(Text, nullable=False)
+    md5 = Column(Text, nullable=False, unique=True)
     size = Column(Integer, nullable=False)
     duration = Column(Integer, nullable=False)
     width = Column(Integer, nullable=False)
