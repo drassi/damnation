@@ -7,6 +7,7 @@ import string
 import random
 import subprocess
 import transaction
+from datetime import datetime
 
 from sqlalchemy import engine_from_config
 from pyramid.paster import get_appsettings, setup_logging
@@ -19,7 +20,7 @@ REDIS = redis.Redis()
 def get_abspath(asset):
     return os.path.join(Config.ASSET_ROOT, asset.path)
 
-def load_asset(original_abspath):
+def load_asset(original_abspath, collection_id, now):
 
     # get md5 and make sure we don't import a duplicate
     md5 = subprocess.check_output(['md5sum', original_abspath]).split(' ', 1)[0]
@@ -59,21 +60,23 @@ def load_asset(original_abspath):
 
     # persist asset metadata to the db
     size = os.path.getsize(import_abspath)
-    asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), unicode(original_abspath))
+    collection = DBSession.query(Collection).get(collection_id)
+    asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), unicode(original_abspath), collection)
+    asset.imported = now
     print 'imported %s to %s size=%d' % (original_abspath, import_abspath, size)
     DBSession.add(asset)
     DBSession.flush()
 
     return asset.id
 
-def load_assets(asset_root):
+def load_assets(asset_root, collection_id, now):
     [REDIS.sadd('resque:queues', q) for q in ['transcode', 'screenshot', 'thumbnail', 'youtube']]
     asset_ids = []
     for dirpath, dirnames, filenames in os.walk(asset_root):
         for filename in filenames:
             abspath = os.path.abspath(os.path.join(dirpath, filename))
             with transaction.manager:
-                asset_id = load_asset(abspath)
+                asset_id = load_asset(abspath, collection_id, now)
             if asset_id is not None:
                 queue_transcode_and_screenshot(asset_id)
                 asset_ids.append(asset_id)
@@ -131,11 +134,12 @@ def queue_transcode_and_screenshot(asset_id):
     REDIS.rpush('resque:queue:thumbnail',
                 json.dumps({'class': 'ThumbnailAsset', 'args': [asset.id, thumbnail_derivative_type, thumbnail_cmds, thumbnail_outpath]}))
 
-def create_collection(new_asset_ids, import_name):
+def create_collection(import_name):
+    collection_id = rand(6)
     with transaction.manager:
-        collection = Collection(rand(6), import_name, '', True)
-        collection.assets = DBSession.query(Asset).filter(Asset.id.in_(new_asset_ids)).all()
+        collection = Collection(collection_id, import_name, '')
         DBSession.add(collection)
+    return collection_id
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
@@ -154,6 +158,6 @@ def main(argv=sys.argv):
     engine = engine_from_config(settings, 'sqlalchemy.')
     DBSession.configure(bind=engine)
     print 'importing assets from %s..' % asset_path
-    new_asset_ids = load_assets(asset_path)
-    create_collection(new_asset_ids, import_name)
+    collection_id = create_collection(import_name)
+    new_asset_ids = load_assets(asset_path, collection_id, datetime.utcnow())
     print 'done importing %d assets' % len(new_asset_ids)

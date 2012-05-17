@@ -10,7 +10,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPSeeOther, HTTPFo
 from sqlalchemy import func
 from sqlalchemy.exc import DBAPIError
 
-from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant, collection_assets
+from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant
 from .config import Config
 
 def get_user(request):
@@ -22,7 +22,6 @@ def get_user(request):
 def list_collections(request):
     user = get_user(request)
     collection_query = DBSession.query(Collection, func.count(Asset.id)) \
-                                .join(collection_assets) \
                                 .join(Asset) \
                                 .group_by(Collection.id)
     if not user.superuser:

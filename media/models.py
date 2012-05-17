@@ -27,11 +27,14 @@ class Asset(Base):
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
     title = Column(Unicode, nullable=False)
-    metadata_json = Column(Unicode, nullable=False)
     original_abspath = Column(Text, nullable=False)
-    created = Column(DateTime, nullable=False)
+    created = Column(DateTime)
+    imported = Column(DateTime, nullable=False)
+    collection_id = Column(Text, ForeignKey('collections.id'), nullable=False)
 
-    def __init__(self, id, asset_type, path, md5, size, duration, width, height, title, original_abspath):
+    collection = relationship('Collection', backref='assets')
+
+    def __init__(self, id, asset_type, path, md5, size, duration, width, height, title, original_abspath, collection):
         self.id = id
         self.asset_type = asset_type
         self.path = path
@@ -42,17 +45,12 @@ class Asset(Base):
         self.height = height
         self.title = title
         self.original_abspath = original_abspath
-        self.created = datetime.utcnow()
-        self.set_metadata({})
+        self.imported = datetime.utcnow()
+        self.created = None
+        self.collection = collection
 
     def size_mb_str(self):
         return '%0.1f' % (self.size * 1.0 / (1024 * 1024))
-
-    def get_metadata(self):
-        return json.loads(self.metadata_json)
-
-    def set_metadata(self, metadata):
-        self.metadata_json = unicode(json.dumps(metadata))
 
 class DerivativeAsset(Base):
 
@@ -76,13 +74,6 @@ class DerivativeAsset(Base):
         self.output = output
         self.created = datetime.utcnow()
 
-collection_assets = Table(
-    'collection_assets',
-    Base.metadata,
-    Column('collection_id', Text, ForeignKey('collections.id'), primary_key=True),
-    Column('asset_id', Text, ForeignKey('assets.id'), primary_key=True)
-)
-
 class Collection(Base):
 
     __tablename__ = 'collections'
@@ -90,17 +81,14 @@ class Collection(Base):
     id = Column(Text, primary_key=True)
     name = Column(Unicode, nullable=False)
     description = Column(Unicode, nullable=False)
-    frozen = Column(Boolean, nullable=False)
     created = Column(DateTime, nullable=False)
 
-    assets = relationship(Asset, secondary=collection_assets, backref='collections')
     grants = relationship('CollectionGrant', backref='collection')
 
-    def __init__(self, id, name, description, frozen):
+    def __init__(self, id, name, description):
         self.id = id
         self.name = name
         self.description = description
-        self.frozen = frozen
         self.created = datetime.utcnow()
 
 class User(Base):
