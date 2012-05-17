@@ -13,12 +13,12 @@ class RootFactory(object):
             self.user = DBSession.query(User).filter(User.username==self.username).one()
 
     @staticmethod
-    def _get_collection_grants(user_id, collection_ids):
-        grants = DBSession.query(CollectionGrant) \
+    def _get_collection_grant(user_id, collection_id):
+        grant = DBSession.query(CollectionGrant) \
                           .filter(CollectionGrant.user_id==user_id) \
-                          .filter(CollectionGrant.collection_id.in_(collection_ids)) \
-                          .all()
-        return set([grant.grant_type for grant in grants])
+                          .filter(CollectionGrant.collection_id==collection_id) \
+                          .first()
+        return grant.grant_type if grant else None
 
     @property
     def __acl__(self):
@@ -29,19 +29,19 @@ class RootFactory(object):
         if self.matched_route and self.matched_route.name in ['list-collections']:
             permissions.add('read')
         elif 'collection_id' in matchdict:
-            grants = self._get_collection_grants(self.user.id, [matchdict['collection_id']])
-            if 'admin' in grants or self.user.superuser:
+            grant = self._get_collection_grant(self.user.id, matchdict['collection_id'])
+            if grant == 'admin' or self.user.superuser:
                 permissions.update(['read', 'write', 'admin'])
-            if 'write' in grants:
+            elif grant == 'write':
                 permissions.update(['read', 'write'])
-            if 'read' in grants:
+            elif grant == 'read':
                 permissions.update(['read'])
         elif 'asset_id' in matchdict:
             asset = DBSession.query(Asset).get(matchdict['asset_id'])
-            grants = self._get_collection_grants(self.user.id, [collection.id for collection in asset.collections])
-            if 'write' in grants or self.user.superuser:
+            grant = self._get_collection_grant(self.user.id, asset.collection_id)
+            if grant == 'write' or self.user.superuser:
                 permissions.update(['read', 'write'])
-            if 'read' in grants:
+            elif grant =='read':
                 permissions.update(['read'])
         else:
             raise Exception('not sure how to generate ACLs for this request')

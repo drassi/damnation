@@ -31,7 +31,7 @@
           <div>${asset.title}</div>
           <div>${asset.original_abspath}</div>
           <div>${asset.duration}sec ${asset.width}x${asset.height} ${asset.size_mb_str()}MB</div>
-          <div>Added ${asset.created}</div>
+          <div>Added ${asset.imported}</div>
           % if asset.youtube:
             % for video_id in asset.youtube:
               <div><a href="http://www.youtube.com/watch?v=${video_id}">Watch on the Youtube</a></div>

@@ -40,7 +40,7 @@
           <div>${asset.title}</div>
           <div>${asset.original_abspath}</div>
           <div>${asset.duration}sec ${asset.width}x${asset.height} ${asset.size_mb_str()}MB</div>
-          <div>Added ${asset.created}</div>
+          <div>Added ${asset.imported}</div>
         </div>
       </div>
     % endfor
