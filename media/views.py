@@ -4,7 +4,7 @@ from redis import Redis
 
 from pyramid.response import Response
 from pyramid.view import view_config, forbidden_view_config
-from pyramid.security import remember, forget, authenticated_userid
+from pyramid.security import remember, forget, authenticated_userid, has_permission
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPSeeOther, HTTPForbidden
 
 from sqlalchemy import func
@@ -52,13 +52,12 @@ def show_collection(request):
             asset.screenshot = screenshot
             asset.thumbnail = thumbnail
     grant = DBSession.query(CollectionGrant).filter(CollectionGrant.collection_id==id).filter(CollectionGrant.user_id==user.id).first()
-    show_admin_link = user.superuser or (grant is not None and grant.grant_type == 'admin')
     return {
       'collection' : collection,
       'page_assets' : page_assets,
       'base_media_url' : Config.BASE_MEDIA_URL,
       'user' : user,
-      'show_admin_link' : show_admin_link,
+      'show_admin_link' : has_permission('admin', request.context, request),
     }
 
 @view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')
@@ -127,7 +126,16 @@ def show_asset(request):
         'asset' : asset,
         'base_media_url' : Config.BASE_MEDIA_URL,
         'logged_in' : logged_in,
+        'show_modify_asset' : has_permission('write', request.context, request),
     }
+
+@view_config(route_name='modify-asset', permission='write')
+def modify_asset(request):
+    asset_id = request.matchdict['asset_id']
+    asset = DBSession.query(Asset).get(asset_id)
+    asset.title = request.params['asset_title']
+    asset.description = request.params['asset_description']
+    return HTTPSeeOther(location=request.route_url('show-asset', asset_id=asset_id))
 
 @view_config(route_name='upload-asset-to-youtube', renderer='json', permission='write')
 def youtube_upload(request):

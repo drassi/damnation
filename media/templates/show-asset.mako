@@ -32,10 +32,27 @@
           <div>${asset.original_abspath}</div>
           <div>${asset.duration}sec ${asset.width}x${asset.height} ${asset.size_mb_str()}MB</div>
           <div>Added ${asset.imported}</div>
+          <div>${asset.description}</div>
           % if asset.youtube:
             % for video_id in asset.youtube:
               <div><a href="http://www.youtube.com/watch?v=${video_id}">Watch on the Youtube</a></div>
             % endfor
+          % endif
+          % if show_modify_asset:
+            <div>
+              Modify asset:
+              <form action="${request.route_path('modify-asset', asset_id=asset.id)}" method="post">
+                <div>
+                  Asset title:
+                  <input type="text" name="asset_title" value="${asset.title}" />
+                </div>
+                <div>
+                  Asset description:
+                  <textarea name="asset_description">${asset.description}</textarea>
+                </div>
+                <input type="submit" name="submit" value="Save changes to asset" />
+              </form>
+            </div>
           % endif
         </div>
       </div>

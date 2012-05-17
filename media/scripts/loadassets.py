@@ -61,7 +61,7 @@ def load_asset(original_abspath, collection_id, now):
     # persist asset metadata to the db
     size = os.path.getsize(import_abspath)
     collection = DBSession.query(Collection).get(collection_id)
-    asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), unicode(original_abspath), collection)
+    asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), '', unicode(original_abspath), collection)
     asset.imported = now
     print 'imported %s to %s size=%d' % (original_abspath, import_abspath, size)
     DBSession.add(asset)

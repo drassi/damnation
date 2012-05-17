@@ -27,6 +27,7 @@ class Asset(Base):
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
     title = Column(Unicode, nullable=False)
+    description = Column(Unicode, nullable=False)
     original_abspath = Column(Text, nullable=False)
     created = Column(DateTime)
     imported = Column(DateTime, nullable=False)
@@ -34,7 +35,7 @@ class Asset(Base):
 
     collection = relationship('Collection', backref='assets')
 
-    def __init__(self, id, asset_type, path, md5, size, duration, width, height, title, original_abspath, collection):
+    def __init__(self, id, asset_type, path, md5, size, duration, width, height, title, description, original_abspath, collection):
         self.id = id
         self.asset_type = asset_type
         self.path = path
@@ -44,6 +45,7 @@ class Asset(Base):
         self.width = width
         self.height = height
         self.title = title
+        self.description = description
         self.original_abspath = original_abspath
         self.imported = datetime.utcnow()
         self.created = None
