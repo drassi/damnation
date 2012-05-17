@@ -85,7 +85,7 @@ class Collection(Base):
     description = Column(Unicode, nullable=False)
     created = Column(DateTime, nullable=False)
 
-    grants = relationship('CollectionGrant', backref='collection')
+    grants = relationship('CollectionGrant', backref='collection', cascade='all, delete')
 
     def __init__(self, id, name, description):
         self.id = id
