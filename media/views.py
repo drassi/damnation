@@ -1,4 +1,6 @@
 import os
+import random
+import string
 import simplejson as json
 from redis import Redis
 
@@ -18,18 +20,30 @@ def get_user(request):
     user = DBSession.query(User).filter(User.username==username).first()
     return user
 
+def rand(n):
+    return ''.join(random.choice(string.lowercase + string.digits) for i in xrange(n))
+
 @view_config(route_name='list-collections', renderer='list-collections.mako', permission='read')
 def list_collections(request):
     user = get_user(request)
-    collection_query = DBSession.query(Collection, func.count(Asset.id)) \
-                                .join(Asset) \
-                                .group_by(Collection.id)
-    if not user.superuser:
-        collection_query = collection_query.join(CollectionGrant).filter(CollectionGrant.user_id==user.id)
-    collection_counts = collection_query.all()
+    if user.superuser:
+        collections = DBSession.query(Collection, func.count(Asset.id)) \
+                                .outerjoin(Asset) \
+                                .group_by(Collection.id) \
+                                .all()
+        collections = [(collection, count, True) for collection, count in collections]
+    else:
+        collections = DBSession.query(Collection, func.count(Asset.id), func.max(CollectionGrant.grant_type)) \
+                                .outerjoin(Asset) \
+                                .group_by(Collection.id) \
+                                .join(CollectionGrant) \
+                                .filter(CollectionGrant.user_id==user.id) \
+                                .all()
+        collections = [(collection, count, grant_type=='admin') for collection, count, grant_type in collections]
     return {
-      'collection_counts' : collection_counts,
+      'collections' : collections,
       'user' : user,
+      'show_add_collection_link' : has_permission('admin', request.context, request),
     }
 
 @view_config(route_name='show-collection', renderer='show-collection.mako', permission='read')
@@ -59,6 +73,21 @@ def show_collection(request):
       'user' : user,
       'show_admin_link' : has_permission('admin', request.context, request),
     }
+
+@view_config(route_name='add-collection', permission='admin')
+def add_collection(request):
+    collection_name = request.params['new_collection_name'].strip()
+    if collection_name:
+        collection = Collection(rand(6), collection_name, '')
+        DBSession.add(collection)
+    return HTTPSeeOther(location=request.route_url('list-collections'))
+
+@view_config(route_name='delete-collection', permission='admin')
+def delete_collection(request):
+    collection_id = request.matchdict['collection_id']
+    collection = DBSession.query(Collection).get(collection_id)
+    DBSession.delete(collection)
+    return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')
 def admin_collection(request):

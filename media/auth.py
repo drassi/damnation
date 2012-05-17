@@ -26,8 +26,10 @@ class RootFactory(object):
             return []
         matchdict = self.request.matchdict
         permissions = set()
-        if self.matched_route and self.matched_route.name in ['list-collections']:
+        if self.matched_route and self.matched_route.name in ['list-collections', 'add-collection']:
             permissions.add('read')
+            if self.user.superuser:
+                permissions.add('admin')
         elif 'collection_id' in matchdict:
             grant = self._get_collection_grant(self.user.id, matchdict['collection_id'])
             if grant == 'admin' or self.user.superuser:

@@ -19,11 +19,13 @@ def main(global_config, **settings):
     config.add_static_view('static', 'static', cache_max_age=3600)
 
     config.add_route('list-collections', '/', request_method='GET')
-    config.add_route('show-collection', '/collection/{collection_id}', request_method='GET')
+    config.add_route('show-collection', '/collection/view/{collection_id}', request_method='GET')
+    config.add_route('add-collection', '/collection/add', request_method='POST')
+    config.add_route('delete-collection', '/collection/delete/${collection_id}', request_method='POST')
     config.add_route('admin-collection', '/collection/admin/{collection_id}', request_method='GET')
     config.add_route('admin-collection-save', '/collection/admin/save/{collection_id}', request_method='POST')
 
-    config.add_route('show-asset', '/asset/{asset_id}', request_method='GET')
+    config.add_route('show-asset', '/asset/view/{asset_id}', request_method='GET')
     config.add_route('modify-asset', '/asset/modify/{asset_id}', request_method='POST')
     config.add_route('upload-asset-to-youtube', '/asset/youtube-upload/{asset_id}', request_method='POST')
 
