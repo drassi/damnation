@@ -27,6 +27,7 @@ def main(global_config, **settings):
 
     config.add_route('show-asset', '/asset/view/{asset_id}', request_method='GET')
     config.add_route('modify-asset', '/asset/modify/{asset_id}', request_method='POST')
+    config.add_route('move-assets', '/asset/move', request_method='POST')
     config.add_route('upload-asset-to-youtube', '/asset/youtube-upload/{asset_id}', request_method='POST')
 
     config.add_route('login', '/login')

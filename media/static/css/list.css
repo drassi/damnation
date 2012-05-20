@@ -5,7 +5,6 @@ div.asset-container {
   height: 285px;
 }
 
-div.asset-container:hover {
+img.screenshot:hover {
   cursor: pointer;
-  background-color: #ddd;
 }

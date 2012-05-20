@@ -49,8 +49,8 @@ def list_collections(request):
 @view_config(route_name='show-collection', renderer='show-collection.mako', permission='read')
 def show_collection(request):
     user = get_user(request)
-    id = request.matchdict['collection_id']
-    collection = DBSession.query(Collection).get(id)
+    collection_id = request.matchdict['collection_id']
+    collection = DBSession.query(Collection).get(collection_id)
     assets = collection.assets
     page_assets, page_screenshots = [], {}
     for asset in assets:
@@ -65,13 +65,20 @@ def show_collection(request):
             page_assets.append(asset)
             asset.screenshot = screenshot
             asset.thumbnail = thumbnail
-    grant = DBSession.query(CollectionGrant).filter(CollectionGrant.collection_id==id).filter(CollectionGrant.user_id==user.id).first()
+    grant = DBSession.query(CollectionGrant).filter(CollectionGrant.collection_id==collection_id).filter(CollectionGrant.user_id==user.id).first()
+    if user.superuser:
+        admin_collections = DBSession.query(Collection).all()
+    else:
+        admin_collections = DBSession.query(Collection).join(CollectionGrant).filter(CollectionGrant.user_id==user.id).filter(CollectionGrant.grant_type=='admin').all()
+    admin_collections = [c for c in admin_collections if c.id != collection_id]
     return {
       'collection' : collection,
       'page_assets' : page_assets,
       'base_media_url' : Config.BASE_MEDIA_URL,
       'user' : user,
       'show_admin_link' : has_permission('admin', request.context, request),
+      'show_asset_checkboxes' : has_permission('admin', request.context, request),
+      'admin_collections' : admin_collections,
     }
 
 @view_config(route_name='add-collection', permission='admin')
@@ -157,6 +164,10 @@ def show_asset(request):
         'logged_in' : logged_in,
         'show_modify_asset' : has_permission('write', request.context, request),
     }
+
+@view_config(route_name='move-assets', permission='move')
+def move_assets(request):
+    raise Exception()
 
 @view_config(route_name='modify-asset', permission='write')
 def modify_asset(request):
