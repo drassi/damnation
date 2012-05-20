@@ -165,9 +165,16 @@ def show_asset(request):
         'show_modify_asset' : has_permission('write', request.context, request),
     }
 
-@view_config(route_name='move-assets', permission='move')
+@view_config(route_name='move-assets', renderer='json', permission='move')
 def move_assets(request):
-    raise Exception()
+    target_collection_id = request.params['collection_id']
+    target_collection = DBSession.query(Collection).get(target_collection_id)
+    asset_ids = request.params.getall('asset_id[]')
+    assets = DBSession.query(Asset).filter(Asset.id.in_(asset_ids)).all()
+    for asset in assets:
+        asset.collection = target_collection
+        DBSession.add(asset)
+    return {'success' : True}
 
 @view_config(route_name='modify-asset', permission='write')
 def modify_asset(request):

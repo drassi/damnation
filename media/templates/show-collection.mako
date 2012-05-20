@@ -56,7 +56,7 @@
       }
 
       function moveSuccess(e) {
-        alert('good');
+        window.location = window.location;
       }
     </script>
   </head>
