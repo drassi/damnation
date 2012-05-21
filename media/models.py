@@ -131,3 +131,62 @@ class CollectionGrant(Base):
         self.collection_id = collection.id
         self.user_id = user.id
         self.grant_type = grant_type
+
+class UserLog(Base):
+
+    __tablename__ = 'user_log'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Text, ForeignKey('users.id'), nullable=False)
+    log_type = Column(Text, nullable=False)
+    log_json = Column(Unicode, nullable=False)
+    created = Column(DateTime, nullable=False)
+
+    def __init__(self, user, log_type, log):
+        self.user_id = user.id
+        self.log_type = log_type
+        self.log_json = json.dumps(log)
+        self.created = datetime.utcnow()
+
+class CollectionLog(Base):
+
+    __tablename__ = 'collection_log'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Text, ForeignKey('users.id'), nullable=False)
+    collection_id = Column(Text, ForeignKey('collections.id'), nullable=False)
+    log_type = Column(Text, nullable=False)
+    log_json = Column(Unicode, nullable=False)
+    created = Column(DateTime, nullable=False)
+
+    def __init__(self, user, collection, log_type, log):
+        self.user_id = user.id
+        self.collection_id = collection.id
+        self.log_type = log_type
+        self.log_json = json.dumps(log)
+        self.created = datetime.utcnow()
+
+class GrantLog(Base):
+
+    __tablename__ = 'grant_log'
+
+    id = Column(Integer, primary_key=True)
+    # asdf
+
+class AssetLog(Base):
+
+    __tablename__ = 'asset_log'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Text, ForeignKey('users.id'), nullable=False)
+    asset_id = Column(Text, ForeignKey('assets.id'), nullable=False)
+    log_type = Column(Text, nullable=False)
+    log_json = Column(Unicode, nullable=False)
+    created = Column(DateTime, nullable=False)
+
+    def __init__(self, user, asset, log_type, log):
+        self.user_id = user.id
+        self.asset_id = asset.id
+        self.log_type = log_type
+        self.log_json = json.dumps(log)
+        self.created = datetime.utcnow()

@@ -13,6 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import DBAPIError
 
 from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant
+from .models import UserLog, CollectionLog, AssetLog
 from .config import Config
 
 def get_user(request):
@@ -72,9 +73,9 @@ def show_collection(request):
             asset.thumbnail = thumbnail
     grant = DBSession.query(CollectionGrant).filter(CollectionGrant.collection_id==collection_id).filter(CollectionGrant.user_id==user.id).first()
     if user.superuser:
-        admin_collections = DBSession.query(Collection).all()
+        admin_collections = DBSession.query(Collection).filter(Collection.active==True).all()
     else:
-        admin_collections = DBSession.query(Collection).join(CollectionGrant).filter(CollectionGrant.user_id==user.id).filter(CollectionGrant.grant_type=='admin').all()
+        admin_collections = DBSession.query(Collection).join(CollectionGrant).filter(CollectionGrant.user_id==user.id).filter(CollectionGrant.grant_type=='admin').filter(Collection.active==True).all()
     admin_collections = [c for c in admin_collections if c.id != collection_id]
     return {
       'collection' : collection,
@@ -92,6 +93,9 @@ def add_collection(request):
     if collection_name:
         collection = Collection(rand(6), collection_name, '')
         DBSession.add(collection)
+        user = get_user(request)
+        log = CollectionLog(user, collection, 'create', {})
+        DBSession.add(log)
     return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='delete-collection', permission='admin')
@@ -102,6 +106,9 @@ def delete_collection(request):
         raise Exception("can't delete a collection with assets")
     collection.active = False
     DBSession.add(collection)
+    user = get_user(request)
+    log = CollectionLog(user, collection, 'deactivate', {})
+    DBSession.add(log)
     return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')
@@ -119,11 +126,22 @@ def admin_collection(request):
 @view_config(route_name='admin-collection-save', permission='admin')
 def admin_collection_save(request):
 
-    id = request.matchdict['collection_id']
-    collection = DBSession.query(Collection).get(id)
+    collection_id = request.matchdict['collection_id']
+    collection = DBSession.query(Collection).get(collection_id)
+    user = get_user(request)
+    logs = []
 
-    collection.name = request.params['collection_name']
-    collection.description = request.params['collection_description']
+    new_name = request.params['collection_name']
+    if collection.name != new_name:
+        logs.append(CollectionLog(user, collection, 'modify-name', \
+                                  {'old' : collection.name, 'new' : new_name}))
+    collection.name = new_name
+
+    new_description = request.params['collection_description']
+    if collection.description != new_description:
+        logs.append(CollectionLog(user, collection, 'modify-description', \
+                                  {'old' : collection.description, 'new' : new_description}))
+    collection.description = new_description
     DBSession.add(collection)
 
     grants_to_save = dict([(key.replace('grant_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('grant_')]])
@@ -131,9 +149,14 @@ def admin_collection_save(request):
         if grant.user_id in grants_to_save:
             grant_to_save = grants_to_save[grant.user_id]
             if grant_to_save in ['read', 'write', 'admin']:
+                if grant.grant_type != grant_to_save:
+                    logs.append(CollectionLog(user, collection, 'modify-grant', \
+                                {'grant_user' : grant.user_id, 'old' : grant.grant_type, 'new' : grant_to_save}))
                 grant.grant_type = grant_to_save
                 DBSession.add(grant)
             elif grant_to_save == 'revoke':
+                logs.append(CollectionLog(user, collection, 'revoke-grant', \
+                            {'grant_user' : grant.user_id, 'old' : grant.grant_type}))
                 DBSession.delete(grant)
             else:
                 raise Exception('i dont know about grant %s' % grant_to_save)
@@ -148,8 +171,12 @@ def admin_collection_save(request):
            raise Exception('i dont know about grant %s' % new_grant_type)
        new_grant = CollectionGrant(collection, user, new_grant_type)
        DBSession.add(new_grant)
+       logs.append(CollectionLog(user, collection, 'add-grant', \
+                                 {'grant_user' : user.id, 'new' : new_grant_type}))
 
-    return HTTPSeeOther(location = request.route_url('show-collection', collection_id=id))
+    DBSession.add_all(logs)
+
+    return HTTPSeeOther(location = request.route_url('show-collection', collection_id=collection_id))
 
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
