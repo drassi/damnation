@@ -30,6 +30,9 @@ def main(global_config, **settings):
     config.add_route('move-assets', '/asset/move', request_method='POST')
     config.add_route('upload-asset-to-youtube', '/asset/youtube-upload/{asset_id}', request_method='POST')
 
+    config.add_route('admin-users', '/user/admin', request_method='GET')
+    config.add_route('admin-users-save', '/user/admin/save', request_method='POST')
+
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
     config.add_route('debug', '/debug')

@@ -44,6 +44,7 @@ def list_collections(request):
       'collections' : collections,
       'user' : user,
       'show_add_collection_link' : has_permission('admin', request.context, request),
+      'is_user_admin' : has_permission('admin', request.context, request),
     }
 
 @view_config(route_name='show-collection', renderer='show-collection.mako', permission='read')
@@ -111,7 +112,6 @@ def admin_collection(request):
 @view_config(route_name='admin-collection-save', permission='admin')
 def admin_collection_save(request):
 
-    user = get_user(request)
     id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(id)
 
@@ -157,11 +157,9 @@ def show_asset(request):
     transcode = transcode_matches[0]
     asset.transcode = transcode
     asset.youtube = youtube_matches[0] if youtube_matches else None
-    logged_in = authenticated_userid(request)
     return {
         'asset' : asset,
         'base_media_url' : Config.BASE_MEDIA_URL,
-        'logged_in' : logged_in,
         'show_modify_asset' : has_permission('write', request.context, request),
     }
 
@@ -183,6 +181,44 @@ def modify_asset(request):
     asset.title = request.params['asset_title']
     asset.description = request.params['asset_description']
     return HTTPSeeOther(location=request.route_url('show-asset', asset_id=asset_id))
+
+@view_config(route_name='admin-users', renderer='admin-users.mako', permission='admin')
+def admin_users(request):
+    users = DBSession.query(User).order_by(User.username).all()
+    return {
+        'users' : users,
+    }
+
+@view_config(route_name='admin-users-save', permission='admin')
+def admin_users_save(request):
+
+    new_username = request.params['new_username'].strip()
+    if new_username:
+        password = request.params['new_password']
+        user = User(new_username, password)
+        DBSession.add(user)
+
+    users = DBSession.query(User).all()
+    user_types_to_save = dict([(key.replace('usertype_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('usertype_')]])
+    for user in users:
+        if user.id in user_types_to_save:
+            user_type = user_types_to_save[user.id]
+            if user_type == 'normal':
+                user.superuser = False
+                user.active = True
+                DBSession.add(user)
+            elif user_type == 'superuser':
+                user.superuser = True
+                user.active = True
+                DBSession.add(user)
+            elif user_type == 'inactive':
+                user.superuser = False
+                user.active = False
+                DBSession.add(user)
+            else:
+                raise Exception("i don't know about user type %s" % user_type)
+
+    return HTTPSeeOther(location=request.route_url('admin-users'))
 
 @view_config(route_name='upload-asset-to-youtube', renderer='json', permission='write')
 def youtube_upload(request):

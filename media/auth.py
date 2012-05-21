@@ -47,6 +47,9 @@ class RootFactory(object):
             permissions.add('read')
             if self.user.superuser:
                 permissions.add('admin')
+        elif self.matched_route and self.matched_route.name in ['admin-users', 'admin-users-save']:
+            if self.user.superuser:
+                permissions.add('admin')
         elif self.matched_route and self.matched_route.name == 'move-assets':
             permissions.update(self._get_move_permissions())
         elif 'collection_id' in matchdict:

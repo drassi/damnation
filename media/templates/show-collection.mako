@@ -66,6 +66,7 @@
     % if show_admin_link:
     <div><a href="${request.route_path('admin-collection', collection_id=collection.id)}">Admin collection</a></div>
     % endif
+    <div><a href="${request.route_path('list-collections')}">Back to all collections</a></div>
     <div id="actionContainer" style="display: none;">
       Move
       <span id="numAssetsSelected"></span>
