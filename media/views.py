@@ -30,6 +30,7 @@ def list_collections(request):
         collections = DBSession.query(Collection, func.count(Asset.id)) \
                                .outerjoin(Asset) \
                                .group_by(Collection.id) \
+                               .order_by(Collection.name) \
                                .filter(Collection.active==True) \
                                .all()
         collections = [(collection, count, True) for collection, count in collections]
@@ -37,6 +38,7 @@ def list_collections(request):
         collections = DBSession.query(Collection, func.count(Asset.id), func.max(CollectionGrant.grant_type)) \
                                .outerjoin(Asset) \
                                .group_by(Collection.id) \
+                               .order_by(Collection.name) \
                                .join(CollectionGrant) \
                                .filter(CollectionGrant.user_id==user.id) \
                                .filter(Collection.active==True) \
@@ -96,6 +98,8 @@ def add_collection(request):
 def delete_collection(request):
     collection_id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(collection_id)
+    if len(collection.assets) > 0:
+        raise Exception("can't delete a collection with assets")
     collection.active = False
     DBSession.add(collection)
     return HTTPSeeOther(location=request.route_url('list-collections'))
