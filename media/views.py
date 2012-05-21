@@ -28,17 +28,19 @@ def list_collections(request):
     user = get_user(request)
     if user.superuser:
         collections = DBSession.query(Collection, func.count(Asset.id)) \
-                                .outerjoin(Asset) \
-                                .group_by(Collection.id) \
-                                .all()
+                               .outerjoin(Asset) \
+                               .group_by(Collection.id) \
+                               .filter(Collection.active==True) \
+                               .all()
         collections = [(collection, count, True) for collection, count in collections]
     else:
         collections = DBSession.query(Collection, func.count(Asset.id), func.max(CollectionGrant.grant_type)) \
-                                .outerjoin(Asset) \
-                                .group_by(Collection.id) \
-                                .join(CollectionGrant) \
-                                .filter(CollectionGrant.user_id==user.id) \
-                                .all()
+                               .outerjoin(Asset) \
+                               .group_by(Collection.id) \
+                               .join(CollectionGrant) \
+                               .filter(CollectionGrant.user_id==user.id) \
+                               .filter(Collection.active==True) \
+                               .all()
         collections = [(collection, count, grant_type=='admin') for collection, count, grant_type in collections]
     return {
       'collections' : collections,
@@ -94,7 +96,8 @@ def add_collection(request):
 def delete_collection(request):
     collection_id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(collection_id)
-    DBSession.delete(collection)
+    collection.active = False
+    DBSession.add(collection)
     return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')

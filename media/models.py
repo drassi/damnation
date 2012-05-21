@@ -83,14 +83,16 @@ class Collection(Base):
     id = Column(Text, primary_key=True)
     name = Column(Unicode, nullable=False)
     description = Column(Unicode, nullable=False)
+    active = Column(Boolean, nullable=False)
     created = Column(DateTime, nullable=False)
 
-    grants = relationship('CollectionGrant', backref='collection', cascade='all, delete')
+    grants = relationship('CollectionGrant', backref='collection')
 
     def __init__(self, id, name, description):
         self.id = id
         self.name = name
         self.description = description
+        self.active = True
         self.created = datetime.utcnow()
 
 class User(Base):
