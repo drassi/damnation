@@ -7,8 +7,8 @@
     <script src="/static/jquery/jquery-1.7.2.min.js"></script>
   </head>
   <body>
-    <div style="width: 640px;margin-left:auto;margin-right:auto;">
-      <a style="display:block;width:640px;height:360px;" id="player_${asset.id}"></a>
+    <div style="width: 778px;margin-left:auto;margin-right:auto;">
+      <a style="display:block;width:778px;height:480px;" id="player_${asset.id}"></a>
         <script language="JavaScript">
           flowplayer(
             "player_${asset.id}",
