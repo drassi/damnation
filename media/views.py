@@ -13,6 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import DBAPIError
 
 from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant
+from .models import UserLog, CollectionLog, AssetLog
 from .config import Config
 
 def get_user(request):
@@ -28,22 +29,27 @@ def list_collections(request):
     user = get_user(request)
     if user.superuser:
         collections = DBSession.query(Collection, func.count(Asset.id)) \
-                                .outerjoin(Asset) \
-                                .group_by(Collection.id) \
-                                .all()
+                               .outerjoin(Asset) \
+                               .group_by(Collection.id) \
+                               .order_by(Collection.name) \
+                               .filter(Collection.active==True) \
+                               .all()
         collections = [(collection, count, True) for collection, count in collections]
     else:
         collections = DBSession.query(Collection, func.count(Asset.id), func.max(CollectionGrant.grant_type)) \
-                                .outerjoin(Asset) \
-                                .group_by(Collection.id) \
-                                .join(CollectionGrant) \
-                                .filter(CollectionGrant.user_id==user.id) \
-                                .all()
+                               .outerjoin(Asset) \
+                               .group_by(Collection.id) \
+                               .order_by(Collection.name) \
+                               .join(CollectionGrant) \
+                               .filter(CollectionGrant.user_id==user.id) \
+                               .filter(Collection.active==True) \
+                               .all()
         collections = [(collection, count, grant_type=='admin') for collection, count, grant_type in collections]
     return {
       'collections' : collections,
       'user' : user,
       'show_add_collection_link' : has_permission('admin', request.context, request),
+      'is_user_admin' : has_permission('admin', request.context, request),
     }
 
 @view_config(route_name='show-collection', renderer='show-collection.mako', permission='read')
@@ -67,9 +73,9 @@ def show_collection(request):
             asset.thumbnail = thumbnail
     grant = DBSession.query(CollectionGrant).filter(CollectionGrant.collection_id==collection_id).filter(CollectionGrant.user_id==user.id).first()
     if user.superuser:
-        admin_collections = DBSession.query(Collection).all()
+        admin_collections = DBSession.query(Collection).filter(Collection.active==True).all()
     else:
-        admin_collections = DBSession.query(Collection).join(CollectionGrant).filter(CollectionGrant.user_id==user.id).filter(CollectionGrant.grant_type=='admin').all()
+        admin_collections = DBSession.query(Collection).join(CollectionGrant).filter(CollectionGrant.user_id==user.id).filter(CollectionGrant.grant_type=='admin').filter(Collection.active==True).all()
     admin_collections = [c for c in admin_collections if c.id != collection_id]
     return {
       'collection' : collection,
@@ -87,13 +93,22 @@ def add_collection(request):
     if collection_name:
         collection = Collection(rand(6), collection_name, '')
         DBSession.add(collection)
+        user = get_user(request)
+        log = CollectionLog(user, collection, 'create', {})
+        DBSession.add(log)
     return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='delete-collection', permission='admin')
 def delete_collection(request):
     collection_id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(collection_id)
-    DBSession.delete(collection)
+    if len(collection.assets) > 0:
+        raise Exception("can't delete a collection with assets")
+    collection.active = False
+    DBSession.add(collection)
+    user = get_user(request)
+    log = CollectionLog(user, collection, 'deactivate', {})
+    DBSession.add(log)
     return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')
@@ -111,12 +126,22 @@ def admin_collection(request):
 @view_config(route_name='admin-collection-save', permission='admin')
 def admin_collection_save(request):
 
+    collection_id = request.matchdict['collection_id']
+    collection = DBSession.query(Collection).get(collection_id)
     user = get_user(request)
-    id = request.matchdict['collection_id']
-    collection = DBSession.query(Collection).get(id)
+    logs = []
 
-    collection.name = request.params['collection_name']
-    collection.description = request.params['collection_description']
+    new_name = request.params['collection_name']
+    if collection.name != new_name:
+        logs.append(CollectionLog(user, collection, 'modify-name', \
+                                  {'old' : collection.name, 'new' : new_name}))
+    collection.name = new_name
+
+    new_description = request.params['collection_description']
+    if collection.description != new_description:
+        logs.append(CollectionLog(user, collection, 'modify-description', \
+                                  {'old' : collection.description, 'new' : new_description}))
+    collection.description = new_description
     DBSession.add(collection)
 
     grants_to_save = dict([(key.replace('grant_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('grant_')]])
@@ -124,9 +149,14 @@ def admin_collection_save(request):
         if grant.user_id in grants_to_save:
             grant_to_save = grants_to_save[grant.user_id]
             if grant_to_save in ['read', 'write', 'admin']:
+                if grant.grant_type != grant_to_save:
+                    logs.append(CollectionLog(user, collection, 'modify-grant', \
+                                {'grant_user' : grant.user_id, 'old' : grant.grant_type, 'new' : grant_to_save}))
                 grant.grant_type = grant_to_save
                 DBSession.add(grant)
             elif grant_to_save == 'revoke':
+                logs.append(CollectionLog(user, collection, 'revoke-grant', \
+                            {'grant_user' : grant.user_id, 'old' : grant.grant_type}))
                 DBSession.delete(grant)
             else:
                 raise Exception('i dont know about grant %s' % grant_to_save)
@@ -141,8 +171,12 @@ def admin_collection_save(request):
            raise Exception('i dont know about grant %s' % new_grant_type)
        new_grant = CollectionGrant(collection, user, new_grant_type)
        DBSession.add(new_grant)
+       logs.append(CollectionLog(user, collection, 'add-grant', \
+                                 {'grant_user' : user.id, 'new' : new_grant_type}))
 
-    return HTTPSeeOther(location = request.route_url('show-collection', collection_id=id))
+    DBSession.add_all(logs)
+
+    return HTTPSeeOther(location = request.route_url('show-collection', collection_id=collection_id))
 
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
@@ -157,17 +191,22 @@ def show_asset(request):
     transcode = transcode_matches[0]
     asset.transcode = transcode
     asset.youtube = youtube_matches[0] if youtube_matches else None
-    logged_in = authenticated_userid(request)
     return {
         'asset' : asset,
         'base_media_url' : Config.BASE_MEDIA_URL,
-        'logged_in' : logged_in,
         'show_modify_asset' : has_permission('write', request.context, request),
     }
 
-@view_config(route_name='move-assets', permission='move')
+@view_config(route_name='move-assets', renderer='json', permission='move')
 def move_assets(request):
-    raise Exception()
+    target_collection_id = request.params['collection_id']
+    target_collection = DBSession.query(Collection).get(target_collection_id)
+    asset_ids = request.params.getall('asset_id[]')
+    assets = DBSession.query(Asset).filter(Asset.id.in_(asset_ids)).all()
+    for asset in assets:
+        asset.collection = target_collection
+        DBSession.add(asset)
+    return {'success' : True}
 
 @view_config(route_name='modify-asset', permission='write')
 def modify_asset(request):
@@ -176,6 +215,44 @@ def modify_asset(request):
     asset.title = request.params['asset_title']
     asset.description = request.params['asset_description']
     return HTTPSeeOther(location=request.route_url('show-asset', asset_id=asset_id))
+
+@view_config(route_name='admin-users', renderer='admin-users.mako', permission='admin')
+def admin_users(request):
+    users = DBSession.query(User).order_by(User.username).all()
+    return {
+        'users' : users,
+    }
+
+@view_config(route_name='admin-users-save', permission='admin')
+def admin_users_save(request):
+
+    new_username = request.params['new_username'].strip()
+    if new_username:
+        password = request.params['new_password']
+        user = User(new_username, password)
+        DBSession.add(user)
+
+    users = DBSession.query(User).all()
+    user_types_to_save = dict([(key.replace('usertype_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('usertype_')]])
+    for user in users:
+        if user.id in user_types_to_save:
+            user_type = user_types_to_save[user.id]
+            if user_type == 'normal':
+                user.superuser = False
+                user.active = True
+                DBSession.add(user)
+            elif user_type == 'superuser':
+                user.superuser = True
+                user.active = True
+                DBSession.add(user)
+            elif user_type == 'inactive':
+                user.superuser = False
+                user.active = False
+                DBSession.add(user)
+            else:
+                raise Exception("i don't know about user type %s" % user_type)
+
+    return HTTPSeeOther(location=request.route_url('admin-users'))
 
 @view_config(route_name='upload-asset-to-youtube', renderer='json', permission='write')
 def youtube_upload(request):

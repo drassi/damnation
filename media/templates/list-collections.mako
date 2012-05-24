@@ -7,6 +7,9 @@
     <link rel="stylesheet" type="text/css" href="/static/css/list.css"></link>
   </head>
   <body>
+    % if is_user_admin:
+      <div><a href="${request.route_path('admin-users')}">Admin users</a></div>
+    % endif
     Your collections:
     % for collection, count, is_admin in collections:
       <div>
