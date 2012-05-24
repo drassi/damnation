@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
     <title>assets</title>
-    <script src="/static/flowplayer/flowplayer-3.2.9.min.js"></script>
+    <script src="/static/flowplayer/flowplayer-3.2.10.min.js"></script>
     <script src="/static/jquery/jquery-1.7.2.min.js"></script>
   </head>
   <body>
@@ -12,7 +12,7 @@
         <script language="JavaScript">
           flowplayer(
             "player_${asset.id}",
-            "/static/flowplayer/flowplayer-3.2.10.swf",
+            "/static/flowplayer/flowplayer-3.2.11.swf",
             {
               clip : {
                 url : '${base_media_url}/${asset.transcode}',
