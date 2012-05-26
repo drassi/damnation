@@ -32,10 +32,12 @@ class Asset(Base):
     created = Column(DateTime)
     imported = Column(DateTime, nullable=False)
     collection_id = Column(Text, ForeignKey('collections.id'), nullable=False)
+    import_log_id = Column(Text, ForeignKey('import_log.id'), nullable=False)
 
     collection = relationship('Collection', backref='assets')
+    import_log = relationship('ImportLog', backref='assets')
 
-    def __init__(self, id, asset_type, path, md5, size, duration, width, height, title, description, original_abspath, collection):
+    def __init__(self, id, asset_type, path, md5, size, duration, width, height, title, description, original_abspath, collection, import_log):
         self.id = id
         self.asset_type = asset_type
         self.path = path
@@ -50,6 +52,7 @@ class Asset(Base):
         self.imported = datetime.utcnow()
         self.created = None
         self.collection = collection
+        self.import_log = import_log
 
     def size_mb_str(self):
         return '%0.1f' % (self.size * 1.0 / (1024 * 1024))
@@ -190,4 +193,19 @@ class AssetLog(Base):
         self.new_collection_id = new_collection.id if new_collection is not None else None
         self.log_type = log_type
         self.log_json = json.dumps(log)
+        self.created = datetime.utcnow()
+
+class ImportLog(Base):
+
+    __tablename__ = 'import_log'
+
+    id = Column(Text, primary_key=True)
+    abspath = Column(Text, nullable=False)
+    created = Column(DateTime, nullable=False)
+    log = Column(Unicode, nullable=False)
+
+    def __init__(self, id, abspath, log):
+        self.id = id
+        self.abspath = abspath
+        self.log = log
         self.created = datetime.utcnow()

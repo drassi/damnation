@@ -1,29 +1,26 @@
 require 'rubygems'
 require 'json'
-require 'open4'
 require 'pg'
 
 class DerivativeAsset
 
-  def self.run_cmd(cmd)
-    pid, stdin, stdout, stderr = Open4.popen4 cmd
-    ignored, status = Process::waitpid2 pid
-    ret = status.to_i
-    output = {'stdout' => stdout.read.split(/\n+/), 'stderr' => stderr.read.split(/\n+/)}
-    if ret != 0:
-      raise JSON.dump output
+  def self.run_cmd(cmd, logfile)
+    cmd += ' >> %s 2>&1' % logfile
+    system cmd
+    if $? != 0:
+      logtail = IO.popen("tail -10 %s" % logfile).read.strip.split('\n')
+      raise "Process returned %d, tail is %s" % [$?.to_i, JSON.dump(logtail)]
     end
-    return output
   end
 
   def self.perform(asset_id, derivative_type, cmds, result_path)
-    output = []
+    logfile = '/tmp/%s.log' % (0...8).map{65.+(rand(25)).chr}.join
     for cmd in cmds do
-      output.push self.run_cmd cmd
+      self.run_cmd cmd, logfile
     end
     db = PG.connect(:dbname => 'damnation', :user => 'damnation')
     db.exec 'insert into derivative_assets ("asset_id", "derivative_type", "path", "cmd", "output", "created") values ($1, $2, $3, $4, $5, now())',
-             [asset_id, derivative_type, result_path, JSON.dump(cmds), JSON.dump(output)]
+             [asset_id, derivative_type, result_path, JSON.dump(cmds), logfile]
   end
 end
 
