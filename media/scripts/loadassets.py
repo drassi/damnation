@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy import engine_from_config
 from pyramid.paster import get_appsettings, setup_logging
 
-from ..models import DBSession, Base, Asset, Collection
+from ..models import DBSession, Base, Asset, Collection, ImportLog, AssetLog, CollectionLog, User
 from ..config import Config
 
 REDIS = redis.Redis()
@@ -20,30 +20,38 @@ REDIS = redis.Redis()
 def get_abspath(asset):
     return os.path.join(Config.ASSET_ROOT, asset.path)
 
-def load_asset(original_abspath, collection_id, now):
+def log(logline, import_log):
+    print logline
+    import_log.log += logline + '\n'
+    DBSession.add(import_log)
+
+def load_asset(original_abspath, collection_id, import_log_id, now):
+
+    import_log = DBSession.query(ImportLog).get(import_log_id)
 
     # get md5 and make sure we don't import a duplicate
     md5 = subprocess.check_output(['md5sum', original_abspath]).split(' ', 1)[0]
-    if DBSession.query(Asset).filter(Asset.md5==md5).first():
-        print 'skipping %s, file already imported with md5 %s' % (original_abspath, md5)
+    dupe = DBSession.query(Asset).filter(Asset.md5==md5).first()
+    if dupe:
+        log('IMPORT : DUPE %s : %s' % (dupe.id, original_abspath), import_log)
         return None
 
     # ffprobe the file to get dimensions and length and to ensure we can read it later
     try:
         ffprobe = subprocess.check_output(['ffprobe', '-show_streams', original_abspath], stderr=open('/dev/null', 'w'))
     except:
-        print 'skipping %s, unable to ffprobe' % original_abspath
+        log('SKIP : FFPROBE FAIL : %s' % original_abspath, import_log)
         return None
     durations = [int(d) for d in re.findall('^duration=(\d+)\.\d+\s*$', ffprobe, re.MULTILINE)]
     widths = [int(d) for d in re.findall('^width=(\d+)\s*$', ffprobe, re.MULTILINE)]
     heighths = [int(d) for d in re.findall('^height=(\d+)\s*$', ffprobe, re.MULTILINE)]
     if not durations or not widths or not heighths:
-        print 'skipping %s, unable to get duration, width, height from ffprobe' % original_abspath
+        log('SKIP : FFPROBE MISSING DURATION or W or H : %s' % original_abspath, import_log)
         return None
     duration, width, height = max(durations), max(widths), max(heighths)
 
     if duration == 0:
-        print 'skipping %s, duration is zero' % original_abspath
+        log('SKIP : FFPROBE DURATION ZERO : %s', import_log)
         return None
 
     # copy the asset from it's original location into the asset store directory
@@ -61,22 +69,24 @@ def load_asset(original_abspath, collection_id, now):
     # persist asset metadata to the db
     size = os.path.getsize(import_abspath)
     collection = DBSession.query(Collection).get(collection_id)
-    asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), '', unicode(original_abspath), collection)
+    asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), '', unicode(original_abspath), collection, import_log)
     asset.imported = now
-    print 'imported %s to %s size=%d' % (original_abspath, import_abspath, size)
+    log('IMPORT : OK %s : %s' % (asset.id, original_abspath), import_log)
+    root = DBSession.query(User).filter(User.username=='root').one()
+    asset_log = AssetLog(root, asset, 'create', {})
     DBSession.add(asset)
-    DBSession.flush()
+    DBSession.add(asset_log)
 
     return asset.id
 
-def load_assets(asset_root, collection_id, now):
+def load_assets(asset_root, collection_id, import_log_id, now):
     [REDIS.sadd('resque:queues', q) for q in ['transcode', 'screenshot', 'thumbnail', 'youtube']]
     asset_ids = []
     for dirpath, dirnames, filenames in os.walk(asset_root):
         for filename in filenames:
             abspath = os.path.abspath(os.path.join(dirpath, filename))
             with transaction.manager:
-                asset_id = load_asset(abspath, collection_id, now)
+                asset_id = load_asset(abspath, collection_id, import_log_id, now)
             if asset_id is not None:
                 queue_transcode_and_screenshot(asset_id)
                 asset_ids.append(asset_id)
@@ -116,7 +126,7 @@ def queue_transcode_and_screenshot(asset_id):
     screenshot_outfile_abs = os.path.join(Config.ASSET_ROOT, screenshot_outpath)
     screenshot_cmd = "ffmpeg -i %s -s 240x180 -r %.6f -vcodec png %s" % (infile, screenshot_rate, screenshot_png_outfiles)
     mogrify_cmd = 'mogrify -format gif %s' % screenshot_pngs_abs
-    gifsicle_cmd = 'gifsicle --delay=50 --loop --colors 256 %s > %s' % (screenshot_gifs_abs, screenshot_outfile_abs)
+    gifsicle_cmd = 'gifsicle --delay=50 --loop --colors 256 -o %s %s' % (screenshot_outfile_abs, screenshot_gifs_abs)
     rm_cmd = 'rm %s %s' % (screenshot_pngs_abs, screenshot_gifs_abs)
     screenshot_cmds = [screenshot_cmd, mogrify_cmd, gifsicle_cmd, rm_cmd]
 
@@ -134,12 +144,19 @@ def queue_transcode_and_screenshot(asset_id):
     REDIS.rpush('resque:queue:thumbnail',
                 json.dumps({'class': 'ThumbnailAsset', 'args': [asset.id, thumbnail_derivative_type, thumbnail_cmds, thumbnail_outpath]}))
 
-def create_collection(import_name):
+def create_collection(import_name, asset_path):
     collection_id = rand(6)
+    import_log_id = rand(6)
     with transaction.manager:
-        collection = Collection(collection_id, import_name, '')
+        collection = Collection(collection_id, import_name, u'')
+        root = DBSession.query(User).filter(User.username=='root').one()
+        collection_log = CollectionLog(root, collection, 'create', {})
+        import_log = ImportLog(import_log_id, asset_path, u'')
         DBSession.add(collection)
-    return collection_id
+        DBSession.flush()
+        DBSession.add(collection_log)
+        DBSession.add(import_log)
+    return collection_id, import_log_id
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
@@ -158,6 +175,6 @@ def main(argv=sys.argv):
     engine = engine_from_config(settings, 'sqlalchemy.')
     DBSession.configure(bind=engine)
     print 'importing assets from %s..' % asset_path
-    collection_id = create_collection(import_name)
-    new_asset_ids = load_assets(asset_path, collection_id, datetime.utcnow())
+    collection_id, import_log_id = create_collection(import_name, asset_path)
+    new_asset_ids = load_assets(asset_path, collection_id, import_log_id, datetime.utcnow())
     print 'done importing %d assets' % len(new_asset_ids)
