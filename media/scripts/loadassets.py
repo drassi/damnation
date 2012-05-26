@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy import engine_from_config
 from pyramid.paster import get_appsettings, setup_logging
 
-from ..models import DBSession, Base, Asset, Collection
+from ..models import DBSession, Base, Asset, Collection, User, AssetLog, CollectionLog
 from ..config import Config
 
 REDIS = redis.Redis()
@@ -65,7 +65,8 @@ def load_asset(original_abspath, collection_id, now):
     asset.imported = now
     print 'imported %s to %s size=%d' % (original_abspath, import_abspath, size)
     DBSession.add(asset)
-    DBSession.flush()
+    system = DBSession.query(User).get('000000')
+    DBSession.add(AssetLog(system, asset, 'create', {}, new_collection=collection))
 
     return asset.id
 
@@ -139,6 +140,8 @@ def create_collection(import_name):
     with transaction.manager:
         collection = Collection(collection_id, import_name, '')
         DBSession.add(collection)
+        system = DBSession.query(User).get('000000')
+        DBSession.add(CollectionLog(system, None, collection, 'create', {}))
     return collection_id
 
 def usage(argv):
