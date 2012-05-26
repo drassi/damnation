@@ -72,7 +72,6 @@ def load_asset(original_abspath, collection_id, import_log_id, now):
     asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), '', unicode(original_abspath), collection, import_log)
     asset.imported = now
     log('IMPORT : OK %s : %s' % (asset.id, original_abspath), import_log)
-    root = DBSession.query(User).filter(User.username=='root').one()
     DBSession.add(asset)
     system = DBSession.query(User).get('000000')
     DBSession.add(AssetLog(system, asset, 'create', {}, new_collection=collection))
@@ -151,9 +150,8 @@ def create_collection(import_name, asset_path):
         collection = Collection(collection_id, import_name, u'')
         DBSession.add(collection)
         system = DBSession.query(User).get('000000')
-        DBSession.add(ImportLog(import_log_id, asset_path, u'')
+        DBSession.add(ImportLog(import_log_id, asset_path, u''))
         DBSession.add(CollectionLog(system, None, collection, 'create', {}))
-        DBSession.add(import_log)
     return collection_id, import_log_id
 
 def usage(argv):
