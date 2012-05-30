@@ -141,12 +141,14 @@ class UserLog(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Text, ForeignKey('users.id'), nullable=False)
+    affected_user_id = Column(Text, ForeignKey('users.id'), nullable=False)
     log_type = Column(Text, nullable=False)
     log_json = Column(Unicode, nullable=False)
     created = Column(DateTime, nullable=False)
 
-    def __init__(self, user, log_type, log):
+    def __init__(self, user, affected_user, log_type, log):
         self.user_id = user.id
+        self.affected_user_id = affected_user.id
         self.log_type = log_type
         self.log_json = json.dumps(log)
         self.created = datetime.utcnow()
@@ -157,24 +159,19 @@ class CollectionLog(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Text, ForeignKey('users.id'), nullable=False)
+    affected_user_id = Column(Text, ForeignKey('users.id'), nullable=True)
     collection_id = Column(Text, ForeignKey('collections.id'), nullable=False)
     log_type = Column(Text, nullable=False)
     log_json = Column(Unicode, nullable=False)
     created = Column(DateTime, nullable=False)
 
-    def __init__(self, user, collection, log_type, log):
+    def __init__(self, user, affected_user, collection, log_type, log):
         self.user_id = user.id
+        self.affected_user_id = affected_user.id if affected_user is not None else None
         self.collection_id = collection.id
         self.log_type = log_type
         self.log_json = json.dumps(log)
         self.created = datetime.utcnow()
-
-class GrantLog(Base):
-
-    __tablename__ = 'grant_log'
-
-    id = Column(Integer, primary_key=True)
-    # asdf
 
 class AssetLog(Base):
 
@@ -183,13 +180,17 @@ class AssetLog(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Text, ForeignKey('users.id'), nullable=False)
     asset_id = Column(Text, ForeignKey('assets.id'), nullable=False)
+    old_collection_id = Column(Text, ForeignKey('collections.id'), nullable=True)
+    new_collection_id = Column(Text, ForeignKey('collections.id'), nullable=True)
     log_type = Column(Text, nullable=False)
     log_json = Column(Unicode, nullable=False)
     created = Column(DateTime, nullable=False)
 
-    def __init__(self, user, asset, log_type, log):
+    def __init__(self, user, asset, log_type, log, old_collection=None, new_collection=None):
         self.user_id = user.id
         self.asset_id = asset.id
+        self.old_collection_id = old_collection.id if old_collection is not None else None
+        self.new_collection_id = new_collection.id if new_collection is not None else None
         self.log_type = log_type
         self.log_json = json.dumps(log)
         self.created = datetime.utcnow()

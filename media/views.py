@@ -94,8 +94,7 @@ def add_collection(request):
         collection = Collection(rand(6), collection_name, '')
         DBSession.add(collection)
         user = get_user(request)
-        log = CollectionLog(user, collection, 'create', {})
-        DBSession.add(log)
+        DBSession.add(CollectionLog(user, None, collection, 'create', {}))
     return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='delete-collection', permission='admin')
@@ -105,10 +104,8 @@ def delete_collection(request):
     if len(collection.assets) > 0:
         raise Exception("can't delete a collection with assets")
     collection.active = False
-    DBSession.add(collection)
     user = get_user(request)
-    log = CollectionLog(user, collection, 'deactivate', {})
-    DBSession.add(log)
+    DBSession.add(CollectionLog(user, None, collection, 'deactivate', {}))
     return HTTPSeeOther(location=request.route_url('list-collections'))
 
 @view_config(route_name='admin-collection', renderer='admin-collection.mako', permission='admin')
@@ -129,52 +126,47 @@ def admin_collection_save(request):
     collection_id = request.matchdict['collection_id']
     collection = DBSession.query(Collection).get(collection_id)
     user = get_user(request)
-    logs = []
 
     new_name = request.params['collection_name']
     if collection.name != new_name:
-        logs.append(CollectionLog(user, collection, 'modify-name', \
-                                  {'old' : collection.name, 'new' : new_name}))
+        DBSession.add(CollectionLog(user, None, collection, 'modify-name',
+                                    {'old' : collection.name, 'new' : new_name}))
     collection.name = new_name
 
     new_description = request.params['collection_description']
     if collection.description != new_description:
-        logs.append(CollectionLog(user, collection, 'modify-description', \
-                                  {'old' : collection.description, 'new' : new_description}))
+        DBSession.add(CollectionLog(user, None, collection, 'modify-description',
+                                    {'old' : collection.description, 'new' : new_description}))
     collection.description = new_description
-    DBSession.add(collection)
 
     grants_to_save = dict([(key.replace('grant_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('grant_')]])
     for grant in collection.grants:
         if grant.user_id in grants_to_save:
             grant_to_save = grants_to_save[grant.user_id]
+            grant_user = DBSession.query(User).filter(User.id==grant.user_id).one()
             if grant_to_save in ['read', 'write', 'admin']:
                 if grant.grant_type != grant_to_save:
-                    logs.append(CollectionLog(user, collection, 'modify-grant', \
-                                {'grant_user' : grant.user_id, 'old' : grant.grant_type, 'new' : grant_to_save}))
-                grant.grant_type = grant_to_save
-                DBSession.add(grant)
+                    DBSession.add(CollectionLog(user, grant_user, collection, 'modify-grant',
+                                  {'old' : grant.grant_type, 'new' : grant_to_save}))
+                    grant.grant_type = grant_to_save
             elif grant_to_save == 'revoke':
-                logs.append(CollectionLog(user, collection, 'revoke-grant', \
-                            {'grant_user' : grant.user_id, 'old' : grant.grant_type}))
+                DBSession.add(CollectionLog(user, grant_user, collection, 'revoke-grant',
+                              {'old' : grant.grant_type}))
                 DBSession.delete(grant)
             else:
                 raise Exception('i dont know about grant %s' % grant_to_save)
 
     new_grant_username = request.params['new_username'].strip()
     if new_grant_username:
-       user = DBSession.query(User).filter(User.username == new_grant_username).first()
-       if not user:
+       grant_user = DBSession.query(User).filter(User.username == new_grant_username).first()
+       if not grant_user:
            raise Exception('unable to locate user with username %s' % new_grant_username)
        new_grant_type = request.params['new_grant']
        if new_grant_type not in ['read', 'write', 'admin']:
            raise Exception('i dont know about grant %s' % new_grant_type)
-       new_grant = CollectionGrant(collection, user, new_grant_type)
-       DBSession.add(new_grant)
-       logs.append(CollectionLog(user, collection, 'add-grant', \
-                                 {'grant_user' : user.id, 'new' : new_grant_type}))
-
-    DBSession.add_all(logs)
+       DBSession.add(CollectionGrant(collection, grant_user, new_grant_type))
+       DBSession.add(CollectionLog(user, grant_user, collection, 'add-grant',
+                                   {'new' : new_grant_type}))
 
     return HTTPSeeOther(location = request.route_url('show-collection', collection_id=collection_id))
 
@@ -199,21 +191,30 @@ def show_asset(request):
 
 @view_config(route_name='move-assets', renderer='json', permission='move')
 def move_assets(request):
+    user = get_user(request)
     target_collection_id = request.params['collection_id']
     target_collection = DBSession.query(Collection).get(target_collection_id)
     asset_ids = request.params.getall('asset_id[]')
     assets = DBSession.query(Asset).filter(Asset.id.in_(asset_ids)).all()
     for asset in assets:
+        old_collection = asset.collection
         asset.collection = target_collection
-        DBSession.add(asset)
+        DBSession.add(AssetLog(user, asset, 'change-collection', {}, old_collection=old_collection, new_collection=target_collection))
     return {'success' : True}
 
 @view_config(route_name='modify-asset', permission='write')
 def modify_asset(request):
+    user = get_user(request)
     asset_id = request.matchdict['asset_id']
     asset = DBSession.query(Asset).get(asset_id)
-    asset.title = request.params['asset_title']
-    asset.description = request.params['asset_description']
+    asset_title = request.params['asset_title']
+    if asset.title != asset_title:
+        DBSession.add(AssetLog(user, asset, 'modify-title', {'old' : asset.title, 'new' : asset_title}))
+        asset.title = asset_title
+    asset_description = request.params['asset_description']
+    if asset.description != asset_description:
+        DBSession.add(AssetLog(user, asset, 'modify-description', {'old' : asset.description, 'new' : asset_description}))
+        asset.description = asset_description
     return HTTPSeeOther(location=request.route_url('show-asset', asset_id=asset_id))
 
 @view_config(route_name='admin-users', renderer='admin-users.mako', permission='admin')
@@ -223,32 +224,40 @@ def admin_users(request):
         'users' : users,
     }
 
+def change_usertype(user, affected_user, superuser, active):
+    if affected_user.superuser != superuser:
+        affected_user.superuser = superuser
+        log_type = 'make-superuser' if superuser else 'revoke-superuser'
+        DBSession.add(UserLog(user, affected_user, log_type, {}))
+    if affected_user.active != active:
+        affected_user.active = active
+        log_type = 'activate' if active else 'deactivate'
+        DBSession.add(UserLog(user, affected_user, log_type, {}))
+
 @view_config(route_name='admin-users-save', permission='admin')
 def admin_users_save(request):
+
+    user = get_user(request)
 
     new_username = request.params['new_username'].strip()
     if new_username:
         password = request.params['new_password']
-        user = User(new_username, password)
-        DBSession.add(user)
+        new_user = User(new_username, password)
+        DBSession.add(new_user)
+        DBSession.flush()
+        DBSession.add(UserLog(user, new_user, 'create', {}))
 
     users = DBSession.query(User).all()
     user_types_to_save = dict([(key.replace('usertype_', ''), request.params[key]) for key in [key for key in request.params.keys() if key.startswith('usertype_')]])
-    for user in users:
-        if user.id in user_types_to_save:
-            user_type = user_types_to_save[user.id]
+    for affected_user in users:
+        if affected_user.id in user_types_to_save:
+            user_type = user_types_to_save[affected_user.id]
             if user_type == 'normal':
-                user.superuser = False
-                user.active = True
-                DBSession.add(user)
+                change_usertype(user, affected_user, False, True)
             elif user_type == 'superuser':
-                user.superuser = True
-                user.active = True
-                DBSession.add(user)
+                change_usertype(user, affected_user, True, True)
             elif user_type == 'inactive':
-                user.superuser = False
-                user.active = False
-                DBSession.add(user)
+                change_usertype(user, affected_user, False, False)
             else:
                 raise Exception("i don't know about user type %s" % user_type)
 

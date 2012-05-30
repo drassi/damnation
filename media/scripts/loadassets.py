@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy import engine_from_config
 from pyramid.paster import get_appsettings, setup_logging
 
-from ..models import DBSession, Base, Asset, Collection, ImportLog, AssetLog, CollectionLog, User
+from ..models import DBSession, Base, Asset, Collection, User, AssetLog, CollectionLog, ImportLog
 from ..config import Config
 
 REDIS = redis.Redis()
@@ -72,10 +72,9 @@ def load_asset(original_abspath, collection_id, import_log_id, now):
     asset = Asset(rand(6), 'video', import_path, md5, size, duration, width, height, unicode(original_basename), '', unicode(original_abspath), collection, import_log)
     asset.imported = now
     log('IMPORT : OK %s : %s' % (asset.id, original_abspath), import_log)
-    root = DBSession.query(User).filter(User.username=='root').one()
-    asset_log = AssetLog(root, asset, 'create', {})
     DBSession.add(asset)
-    DBSession.add(asset_log)
+    system = DBSession.query(User).get('000000')
+    DBSession.add(AssetLog(system, asset, 'create', {}, new_collection=collection))
 
     return asset.id
 
@@ -149,13 +148,10 @@ def create_collection(import_name, asset_path):
     import_log_id = rand(6)
     with transaction.manager:
         collection = Collection(collection_id, import_name, u'')
-        root = DBSession.query(User).filter(User.username=='root').one()
-        collection_log = CollectionLog(root, collection, 'create', {})
-        import_log = ImportLog(import_log_id, asset_path, u'')
         DBSession.add(collection)
-        DBSession.flush()
-        DBSession.add(collection_log)
-        DBSession.add(import_log)
+        system = DBSession.query(User).get('000000')
+        DBSession.add(ImportLog(import_log_id, asset_path, u''))
+        DBSession.add(CollectionLog(system, None, collection, 'create', {}))
     return collection_id, import_log_id
 
 def usage(argv):
