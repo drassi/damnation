@@ -105,7 +105,7 @@ def queue_transcode_and_screenshot(asset_id):
     mp4_outpath = '%s.%s.%s' % (inpath, rand(4), mp4_derivative_type)
     mp4_outfile = os.path.join(Config.ASSET_ROOT, mp4_outpath)
     mp4_tmpfile = mp4_outfile + '.tmp'
-    mp4_cmd = "avconv -i %s -vcodec libx264 -vprofile high -preset slow -b:v 512k -maxrate 512k -bufsize 1024k -vf scale=-1:480 -acodec libvo_aacenc -b:a 128k -ar 44100 -ac 2 -f mp4 -y %s" % (infile, mp4_tmpfile)
+    mp4_cmd = "avconv -i %s -vcodec libx264 -vprofile high -preset slow -b:v 768k -maxrate 768k -bufsize 1536k -vf scale=-1:480,yadif -acodec libvo_aacenc -b:a 128k -ar 44100 -ac 2 -f mp4 -y %s" % (infile, mp4_tmpfile)
     faststart_cmd = 'qt-faststart %s %s' % (mp4_tmpfile, mp4_outfile)
     rm_tmp_cmd = 'rm %s' % mp4_tmpfile
     mp4_cmds = [mp4_cmd, faststart_cmd, rm_tmp_cmd]
@@ -132,7 +132,7 @@ def queue_transcode_and_screenshot(asset_id):
     thumbnail_derivative_type = 'thumbnail.180.png'
     thumbnail_outpath = '%s.%s.%s' % (inpath, rand(4), thumbnail_derivative_type)
     thumbnail_outfile = os.path.join(Config.ASSET_ROOT, thumbnail_outpath)
-    thumbnail_location_secs = asset.duration / 4
+    thumbnail_location_secs = asset.duration / 10
     thumbnail_cmd = "avconv -ss %d -i %s -t 1 -s 240x180 -vframes 1 -vcodec png -loglevel fatal %s" % (thumbnail_location_secs, infile, thumbnail_outfile)
     thumbnail_cmds = [thumbnail_cmd]
 
