@@ -1,30 +1,33 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
-    <title>assets</title>
+<%inherit file='base.mako'/>
+
+<%block name='header'>
     <script src="/static/flowplayer/flowplayer-3.2.10.min.js"></script>
-    <script src="/static/jquery/jquery-1.7.2.min.js"></script>
-  </head>
-  <body>
+    <link rel="stylesheet" type="text/css" href="/static/bootstrap-wysihtml5-0.0.2/bootstrap-wysihtml5-0.0.2.css"></link>
+    <script src="/static/bootstrap-wysihtml5-0.0.2/libs/js/wysihtml5-0.3.0_rc2.min.js"></script>
+    <script src="/static/bootstrap-wysihtml5-0.0.2/bootstrap-wysihtml5-0.0.2.min.js"></script>
+</%block>
+
     <div style="width: 778px;margin-left:auto;margin-right:auto;">
       <a style="display:block;width:778px;height:480px;" id="player_${asset.id}"></a>
-        <script language="JavaScript">
-          flowplayer(
-            "player_${asset.id}",
-            "/static/flowplayer/flowplayer-3.2.11.swf",
-            {
-              clip : {
-                url : '${base_media_url}/${asset.transcode}',
-                provider : 'provider'
-              },
-              plugins : {
-                provider : {
-                  url : '/static/flowplayer/flowplayer.pseudostreaming-3.2.9.swf'
+        <script type="text/javascript">
+          $(function() {
+            flowplayer(
+              "player_${asset.id}",
+	      "/static/flowplayer/flowplayer-3.2.11.swf",
+              {
+                clip : {
+                  url : '${base_media_url}/${asset.transcode}',
+                  provider : 'provider'
+                },
+                plugins : {
+                  provider : {
+                    url : '/static/flowplayer/flowplayer.pseudostreaming-3.2.9.swf'
+                  }
                 }
               }
-            }
-          );
+            );
+            $('textarea#description').wysihtml5();
+          });
         </script>
       <div class="asset-container" data-asset-id="{asset.id}" style="float: left;">
         <div>
@@ -49,7 +52,7 @@
                 </div>
                 <div>
                   Asset description:
-                  <textarea name="asset_description">${asset.description}</textarea>
+                  <textarea id="description" name="asset_description">${asset.description}</textarea>
                 </div>
                 <input type="submit" name="submit" value="Save changes to asset" />
               </form>
@@ -58,5 +61,3 @@
         </div>
       </div>
     </div>
-  </body>
-</html>

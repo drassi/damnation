@@ -6,8 +6,7 @@ source bin/activate
 git clone <your-clone-url>
 cd damnation
 python setup.py develop
-pip install simplejson passlib py-bcrypt
-initialize_media_db development.ini
+pip install simplejson passlib py-bcrypt bleach
 
 # stuff for database
 sudo apt-get install postgresql-9.1 libpq-dev
@@ -36,3 +35,6 @@ sudo apt-get install -y libcurl4-gnutls-dev librtmp-dev
 pip install pycurl gdata
 pip install youtube-upload
 curl http://youtube-upload.googlecode.com/svn/trunk/examples/split_video_for_youtube.sh > ../bin/split_video_for_youtube && chmod u+x ../bin/split_video_for_youtube
+
+initialize_media_db development.ini
+pserve --reload development.ini

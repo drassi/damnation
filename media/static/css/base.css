@@ -1,14 +1,6 @@
-body {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-}
-
 div#header, div#page {
   padding: 4px;
   margin: 4px;
-}
-
-div#header {
-  border-bottom: 1px solid #AAAAAA;
 }
 
 div#header > a {
@@ -17,4 +9,8 @@ div#header > a {
 
 span#welcome {
   float: right;
+}
+
+hr {
+  margin: 0 !important;
 }

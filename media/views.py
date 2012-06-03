@@ -1,3 +1,4 @@
+import bleach
 import os
 import random
 import string
@@ -172,6 +173,7 @@ def admin_collection_save(request):
 
 @view_config(route_name='show-asset', renderer='show-asset.mako', permission='read')
 def show_asset(request):
+    user = get_user(request)
     asset_id = request.matchdict['asset_id']
     asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==asset_id).first()
     if not asset:
@@ -184,6 +186,7 @@ def show_asset(request):
     asset.transcode = transcode
     asset.youtube = youtube_matches[0] if youtube_matches else None
     return {
+        'user' : user,
         'asset' : asset,
         'base_media_url' : Config.BASE_MEDIA_URL,
         'show_modify_asset' : has_permission('write', request.context, request),
@@ -213,14 +216,17 @@ def modify_asset(request):
         asset.title = asset_title
     asset_description = request.params['asset_description']
     if asset.description != asset_description:
+        asset_description = bleach.clean(asset_description, tags=['i', 'em', 'b', 'strong', 'p', 'div', 'a', 'br', 'span', 'ol', 'ul', 'li', 'h1', 'h2'])
         DBSession.add(AssetLog(user, asset, 'modify-description', {'old' : asset.description, 'new' : asset_description}))
         asset.description = asset_description
     return HTTPSeeOther(location=request.route_url('show-asset', asset_id=asset_id))
 
 @view_config(route_name='admin-users', renderer='admin-users.mako', permission='admin')
 def admin_users(request):
+    user = get_user(request)
     users = DBSession.query(User).order_by(User.username).all()
     return {
+        'user' : user,
         'users' : users,
     }
 
