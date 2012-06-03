@@ -31,10 +31,12 @@
         </script>
       <div class="asset-container" data-asset-id="{asset.id}" style="float: left;">
         <div>
-          <div>${asset.title}</div>
+          <h4>
+            <span>${asset.title}</span>
+            <span style="float: right;">Added ${asset.imported}</span>
+          </h4>
           <div>${asset.original_abspath}</div>
           <div>${asset.duration}sec ${asset.width}x${asset.height} ${asset.size_mb_str()}MB</div>
-          <div>Added ${asset.imported}</div>
           <div>${asset.description}</div>
           <div>From collection <a href=${request.route_path('show-collection', collection_id=asset.collection.id)}>${asset.collection.name}</a></div>
           % if asset.youtube:
@@ -52,7 +54,7 @@
                 </div>
                 <div>
                   Asset description:
-                  <textarea id="description" name="asset_description">${asset.description}</textarea>
+                  <textarea id="description" name="asset_description" style="width: 100%;">${asset.description}</textarea>
                 </div>
                 <input type="submit" name="submit" value="Save changes to asset" />
               </form>
