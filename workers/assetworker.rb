@@ -9,7 +9,7 @@ class DerivativeAsset
     system cmd
     if $? != 0:
       logtail = IO.popen("tail -10 %s" % logfile).read.strip.split('\n')
-      raise "Process returned %d, tail is %s" % [$?.to_i, JSON.dump(logtail)]
+      raise "Process returned %d, full log at %s, tail is %s" % [$?.to_i, logfile, JSON.dump(logtail)]
     end
   end
 
