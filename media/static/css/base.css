@@ -14,3 +14,7 @@ span#welcome {
 hr {
   margin: 0 !important;
 }
+
+label {
+  display: inline !important;
+}
