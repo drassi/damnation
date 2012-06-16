@@ -9,6 +9,40 @@
 
     <div style="width: 778px;margin-left:auto;margin-right:auto;">
       <a style="display:block;width:778px;height:480px;" id="player_${asset.id}"></a>
+       % if asset.playlist:
+        <script type="text/javascript">
+          $(function() {
+            flowplayer(
+              "player_${asset.id}",
+              "/static/flowplayer/flowplayer-3.2.11.swf",
+              {
+                clip : {
+                  provider : 'provider'
+                },
+                plugins : {
+                  provider : {
+                    url : '/static/flowplayer/flowplayer.pseudostreaming-3.2.9.swf'
+                  },
+                  controls : {
+                    playlist : true
+                  }
+                },
+                playlist : [
+                 % for transcode in asset.transcodes:
+                  {
+                    url : '${base_media_url}/${transcode}'
+                  }
+                  % if not loop.last:
+                    ,
+                  % endif
+                 % endfor
+                ]
+              }
+            );
+            $('textarea#description').wysihtml5();
+          });
+        </script>
+       % else:
         <script type="text/javascript">
           $(function() {
             flowplayer(
@@ -29,6 +63,7 @@
             $('textarea#description').wysihtml5();
           });
         </script>
+       % endif
       <div class="asset-container" data-asset-id="{asset.id}" style="float: left;">
         <div>
           <h4>

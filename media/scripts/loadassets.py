@@ -100,15 +100,31 @@ def queue_transcode_and_screenshot(asset_id):
 
     inpath = asset.path
     infile = os.path.join(Config.ASSET_ROOT, inpath)
+    ext = os.path.splitext(inpath)[1]
 
-    mp4_derivative_type = 'transcode.360.mp4'
-    mp4_outpath = '%s.%s.%s' % (inpath, rand(4), mp4_derivative_type)
-    mp4_outfile = os.path.join(Config.ASSET_ROOT, mp4_outpath)
-    mp4_tmpfile = mp4_outfile + '.tmp'
-    mp4_cmd = "avconv -i %s -vcodec libx264 -vprofile high -preset slow -b:v 768k -maxrate 768k -bufsize 1536k -vf scale=-1:480,yadif -acodec libvo_aacenc -b:a 128k -ar 44100 -ac 2 -f mp4 -y %s" % (infile, mp4_tmpfile)
-    faststart_cmd = 'qt-faststart %s %s' % (mp4_tmpfile, mp4_outfile)
-    rm_tmp_cmd = 'rm %s' % mp4_tmpfile
-    mp4_cmds = [mp4_cmd, faststart_cmd, rm_tmp_cmd]
+    duration = asset.duration
+    size = asset.size
+    bitrate = (size * 8) / (duration * 1024)
+    transcode_bitrate = min(bitrate, 512)
+
+    height = asset.height
+    transcode_height = min(height, 480)
+
+    transcode_arg_list = []
+    mp4_derivative_type = 'transcode.480.mp4'
+    chunk_size_secs = 3600
+    num_parts = 1 + duration / chunk_size_secs
+    for part in range(num_parts):
+        mp4_outpath = '%s.%s.transcode.480.part%03d.mp4' % (inpath, rand(4), part)
+        mp4_outfile = os.path.join(Config.ASSET_ROOT, mp4_outpath)
+        mp4_tmpfile = mp4_outfile + '.tmp'
+        screenshot_params = '-ss %d -t %d' % (part * chunk_size_secs, chunk_size_secs) if num_parts > 1 else ''
+        mp4_cmd = "avconv -i %s %s -vcodec libx264 -vprofile high -preset medium -b:v %dk -vf scale=-1:%d,yadif -acodec libvo_aacenc -b:a 64k -ar 44100 -ac 2 -f mp4 -y %s" % (infile, screenshot_params, transcode_bitrate, transcode_height, mp4_tmpfile)
+        faststart_cmd = 'qt-faststart %s %s' % (mp4_tmpfile, mp4_outfile)
+        rm_tmp_cmd = 'rm %s' % mp4_tmpfile
+        cmds = [mp4_cmd, faststart_cmd, rm_tmp_cmd]
+        transcode_arg_list.append([cmds, mp4_outpath, part])
+        part += 1
 
     num_screenshots = 14
     screenshot_derivative_type = 'screenshot.180.gif'
@@ -136,12 +152,13 @@ def queue_transcode_and_screenshot(asset_id):
     thumbnail_cmd = "avconv -ss %d -i %s -t 1 -s 240x180 -vframes 1 -vcodec png -loglevel fatal %s" % (thumbnail_location_secs, infile, thumbnail_outfile)
     thumbnail_cmds = [thumbnail_cmd]
 
-    REDIS.rpush('resque:queue:transcode',
-                json.dumps({'class': 'TranscodeAsset', 'args': [asset.id, mp4_derivative_type, mp4_cmds, mp4_outpath]}))
+    for cmds, outpath, part in transcode_arg_list:
+        REDIS.rpush('resque:queue:transcode',
+                    json.dumps({'class': 'TranscodeAsset', 'args': [asset.id, mp4_derivative_type, cmds, outpath, part]}))
     REDIS.rpush('resque:queue:screenshot',
-                json.dumps({'class': 'ScreenshotAsset', 'args': [asset.id, screenshot_derivative_type, screenshot_cmds, screenshot_outpath]}))
+                json.dumps({'class': 'ScreenshotAsset', 'args': [asset.id, screenshot_derivative_type, screenshot_cmds, screenshot_outpath, 0]}))
     REDIS.rpush('resque:queue:thumbnail',
-                json.dumps({'class': 'ThumbnailAsset', 'args': [asset.id, thumbnail_derivative_type, thumbnail_cmds, thumbnail_outpath]}))
+                json.dumps({'class': 'ThumbnailAsset', 'args': [asset.id, thumbnail_derivative_type, thumbnail_cmds, thumbnail_outpath, 0]}))
 
 def create_collection(import_name, asset_path):
     collection_id = rand(6)

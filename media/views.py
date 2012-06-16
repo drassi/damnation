@@ -62,7 +62,7 @@ def show_collection(request):
     page_assets, page_screenshots = [], {}
     for asset in assets:
         derivatives = asset.derivatives
-        transcode_matches = [d.path for d in derivatives if d.derivative_type == 'transcode.360.mp4']
+        transcode_matches = [d.path for d in derivatives if d.derivative_type == 'transcode.480.mp4']
         screenshot_matches = [d.path for d in derivatives if d.derivative_type == 'screenshot.180.gif']
         thumbnail_matches = [d.path for d in derivatives if d.derivative_type == 'thumbnail.180.png']
         if transcode_matches and screenshot_matches and thumbnail_matches:
@@ -178,12 +178,16 @@ def show_asset(request):
     asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==asset_id).first()
     if not asset:
         return HTTPNotFound('No such asset')
-    transcode_matches = [d.path for d in asset.derivatives if d.derivative_type == 'transcode.360.mp4']
+    transcodes = [d.path for d in asset.derivatives if d.derivative_type == 'transcode.480.mp4']
+    transcodes.reverse()
     youtube_matches = [json.loads(d.path) for d in asset.derivatives if d.derivative_type == 'youtube']
-    if not transcode_matches:
+    if not transcodes:
         raise Exception('Couldnt locate the proper transcode of this asset')
-    transcode = transcode_matches[0]
-    asset.transcode = transcode
+    asset.playlist = len(transcodes) > 1
+    if asset.playlist:
+        asset.transcodes = transcodes
+    else:
+        asset.transcode = transcodes[0]
     asset.youtube = youtube_matches[0] if youtube_matches else None
     return {
         'user' : user,

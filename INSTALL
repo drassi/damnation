@@ -17,7 +17,7 @@ sudo -u postgres psql -c "create database damnation;"
 sudo -u postgres psql -c "grant all privileges on database damnation to damnation;"
 
 # stuff for video/audio/photo manipulation and such
-sudo apt-get install -y ffmpeg libavcodec-extra-53 flvtool2 imagemagick gifsicle
+sudo apt-get install -y ffmpeg libavcodec-extra-53 imagemagick gifsicle
 
 # stuff for webserver
 sudo apt-get install -y nginx-extras

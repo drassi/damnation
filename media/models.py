@@ -4,7 +4,7 @@ import simplejson as json
 from datetime import datetime
 from passlib.hash import bcrypt
 
-from sqlalchemy import Column, Integer, Text, Unicode, Boolean, DateTime, ForeignKey, Table
+from sqlalchemy import Column, Integer, BigInteger, Text, Unicode, Boolean, DateTime, ForeignKey, Table, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship, backref
 from zope.sqlalchemy import ZopeTransactionExtension
@@ -22,7 +22,7 @@ class Asset(Base):
     asset_type = Column(Text, nullable=False)
     path = Column(Text, nullable=False)
     md5 = Column(Text, nullable=False, unique=True)
-    size = Column(Integer, nullable=False)
+    size = Column(BigInteger, nullable=False)
     duration = Column(Integer, nullable=False)
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
@@ -60,10 +60,14 @@ class Asset(Base):
 class DerivativeAsset(Base):
 
     __tablename__ = 'derivative_assets'
+    __table_args__ = (
+        UniqueConstraint('asset_id', 'derivative_type', 'part'),
+    )
 
     id = Column(Integer, primary_key=True)
     asset_id = Column(Text, ForeignKey('assets.id'), nullable=False)
     derivative_type = Column(Text, nullable=False)
+    part = Column(Integer, nullable=False)
     path = Column(Text, nullable=False)
     cmd = Column(Text)
     output = Column(Text)
@@ -71,9 +75,10 @@ class DerivativeAsset(Base):
 
     parent = relationship(Asset, backref='derivatives')
 
-    def __init__(self, asset_id, derivative_type, path, cmd):
+    def __init__(self, asset_id, derivative_type, path, cmd, part=0):
         self.asset_id = asset_id
         self.derivative_type = derivative_type
+        self.part = part
         self.path = path
         self.cmd = cmd
         self.output = output
