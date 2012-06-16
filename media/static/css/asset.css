@@ -1,0 +1,13 @@
+a.playlist-item {
+  display: block;
+  width: 50px;
+}
+
+a.playlist-item.playing {
+  font-weight: bold;
+}
+
+a.playlist-item.paused {
+  font-weight: bold;
+  font-style: italic;
+}

@@ -2,14 +2,23 @@
 
 <%block name='header'>
     <script src="/static/flowplayer/flowplayer-3.2.10.min.js"></script>
+    <script src="/static/flowplayer/flowplayer.playlist-3.2.9.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/css/asset.css"></link>
     <link rel="stylesheet" type="text/css" href="/static/bootstrap-wysihtml5-0.0.2/bootstrap-wysihtml5-0.0.2.css"></link>
     <script src="/static/bootstrap-wysihtml5-0.0.2/libs/js/wysihtml5-0.3.0_rc2.min.js"></script>
     <script src="/static/bootstrap-wysihtml5-0.0.2/bootstrap-wysihtml5-0.0.2.min.js"></script>
 </%block>
 
-    <div style="width: 778px;margin-left:auto;margin-right:auto;">
+    <div style="width: 778px;margin-left:auto;margin-right:auto;position:relative;">
       <a style="display:block;width:778px;height:480px;" id="player_${asset.id}"></a>
        % if asset.playlist:
+        <div id="playlist" style="position:absolute; right:-70px; top:0px;">
+         % for transcode in asset.transcodes:
+          <a class="playlist-item" href="${base_media_url}/${transcode}">
+            Part ${loop.index + 1}
+          </a>
+         % endfor
+        </div>
         <script type="text/javascript">
           $(function() {
             flowplayer(
@@ -26,19 +35,9 @@
                   controls : {
                     playlist : true
                   }
-                },
-                playlist : [
-                 % for transcode in asset.transcodes:
-                  {
-                    url : '${base_media_url}/${transcode}'
-                  }
-                  % if not loop.last:
-                    ,
-                  % endif
-                 % endfor
-                ]
+                }
               }
-            );
+            ).playlist('div#playlist', { continuousPlay : true, progressClass: 'loading' });
             $('textarea#description').wysihtml5();
           });
         </script>

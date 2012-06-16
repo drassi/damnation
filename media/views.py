@@ -179,7 +179,6 @@ def show_asset(request):
     if not asset:
         return HTTPNotFound('No such asset')
     transcodes = [d.path for d in asset.derivatives if d.derivative_type == 'transcode.480.mp4']
-    transcodes.reverse()
     youtube_matches = [json.loads(d.path) for d in asset.derivatives if d.derivative_type == 'youtube']
     if not transcodes:
         raise Exception('Couldnt locate the proper transcode of this asset')
