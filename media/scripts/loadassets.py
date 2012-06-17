@@ -51,7 +51,7 @@ def load_asset(original_abspath, collection_id, import_log_id, now):
     duration, width, height = max(durations), max(widths), max(heighths)
 
     if duration == 0:
-        log('SKIP : FFPROBE DURATION ZERO : %s', import_log)
+        log('SKIP : FFPROBE DURATION ZERO : %s' % original_abspath, import_log)
         return None
 
     # copy the asset from it's original location into the asset store directory
