@@ -119,7 +119,7 @@ def queue_transcode_and_screenshot(asset_id):
         mp4_outfile = os.path.join(Config.ASSET_ROOT, mp4_outpath)
         mp4_tmpfile = mp4_outfile + '.tmp'
         screenshot_params = '-ss %d -t %d' % (part * chunk_size_secs, chunk_size_secs) if num_parts > 1 else ''
-        mp4_cmd = "avconv -i %s %s -vcodec libx264 -vprofile high -preset medium -b:v %dk -vf scale=-1:%d,yadif -acodec libvo_aacenc -b:a 64k -ar 44100 -ac 2 -f mp4 -y %s" % (infile, screenshot_params, transcode_bitrate, transcode_height, mp4_tmpfile)
+        mp4_cmd = "avconv -i %s %s -vcodec libx264 -vprofile high -preset medium -b:v %dk -r 30 -vf scale=-1:%d,yadif -acodec libvo_aacenc -b:a 64k -ar 44100 -ac 2 -f mp4 -y %s" % (infile, screenshot_params, transcode_bitrate, transcode_height, mp4_tmpfile)
         faststart_cmd = 'qt-faststart %s %s' % (mp4_tmpfile, mp4_outfile)
         rm_tmp_cmd = 'rm %s' % mp4_tmpfile
         cmds = [mp4_cmd, faststart_cmd, rm_tmp_cmd]
@@ -149,8 +149,9 @@ def queue_transcode_and_screenshot(asset_id):
     thumbnail_outpath = '%s.%s.%s' % (inpath, rand(4), thumbnail_derivative_type)
     thumbnail_outfile = os.path.join(Config.ASSET_ROOT, thumbnail_outpath)
     thumbnail_location_secs = asset.duration / 10
-    thumbnail_cmd = "avconv -ss %d -i %s -t 1 -s 240x180 -vframes 1 -vcodec png -loglevel fatal %s" % (thumbnail_location_secs, infile, thumbnail_outfile)
-    thumbnail_cmds = [thumbnail_cmd]
+    thumbnail_cmd = "avconv -i %s -ss %d -t 1 -s 240x180 -vframes 1 -vcodec png %s" % (infile, thumbnail_location_secs, thumbnail_outfile)
+    ls_cmd = 'ls %s' % thumbnail_outfile
+    thumbnail_cmds = [thumbnail_cmd, ls_cmd]
 
     for cmds, outpath, part in transcode_arg_list:
         REDIS.rpush('resque:queue:transcode',
