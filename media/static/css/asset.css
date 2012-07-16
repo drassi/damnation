@@ -1,3 +1,71 @@
+div.asset-header {
+  margin-bottom: 6px;
+}
+
+span.asset-title {
+  font-size: 20px;
+}
+
+span.asset-added {
+  float: right;
+}
+
+div.asset-container {
+  width: 250px;
+  float: right;
+}
+
+form#add-annotation {
+  margin-bottom: 0;
+}
+
+input.add-annotation {
+  width: 440px;
+}
+
+div#annotations {
+  width: 496px;
+  height: 200px;
+  overflow-y: scroll;
+}
+
+div.annotation {
+  border: 1px solid #CCC;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  margin: 6px 0 6px 0;
+}
+
+div.annotation:first-child {
+  margin-top: 0;
+}
+
+div.annotation span {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+span.annotation-time {
+  display: inline-block;
+  width: 8%;
+}
+
+span.annotation-author {
+  display: inline-block;
+  width: 12%;
+}
+
+span.annotation-text {
+  display: inline-block;
+  width: 70%;
+}
+
+span.annotation-created {
+  display: inline-block;
+  width: 10%;
+}
+
 a.playlist-item {
   display: block;
   width: 50px;
