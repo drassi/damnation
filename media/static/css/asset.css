@@ -37,6 +37,11 @@ div.annotation {
   margin: 6px 0 6px 0;
 }
 
+div.annotation:hover {
+  background-color: #DDD !important;
+  cursor: pointer;
+}
+
 div.annotation:first-child {
   margin-top: 0;
 }
