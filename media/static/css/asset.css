@@ -11,7 +11,7 @@ span.asset-added {
 }
 
 div.asset-container {
-  width: 250px;
+  width: 200px;
   float: right;
 }
 
@@ -20,11 +20,11 @@ form#add-annotation {
 }
 
 input.add-annotation {
-  width: 440px;
+  width: 666px;
 }
 
 div#annotations {
-  width: 496px;
+  width: 720px;
   height: 200px;
   overflow-y: scroll;
 }
@@ -38,7 +38,7 @@ div.annotation {
 }
 
 div.annotation:hover {
-  background-color: #DDD !important;
+  background-color: #CCC !important;
   cursor: pointer;
 }
 
@@ -52,23 +52,23 @@ div.annotation span {
 }
 
 span.annotation-time {
-  display: inline-block;
-  width: 8%;
+  width: 6%;
 }
 
 span.annotation-author {
-  display: inline-block;
-  width: 12%;
+  width: 8%;
 }
 
 span.annotation-text {
-  display: inline-block;
-  width: 70%;
+  width: 74%;
 }
 
 span.annotation-created {
-  display: inline-block;
-  width: 10%;
+  width: 8%;
+}
+
+span.annotation-delete {
+  width: 3%;
 }
 
 a.playlist-item {
