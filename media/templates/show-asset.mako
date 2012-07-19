@@ -73,26 +73,32 @@
        % endif
       <script type="text/javascript">
 
-        var username = 'usernamealotbigger';
+        var username = '${user.username}';
+        var saveAnnotationURL = "${request.route_path('save-annotation', asset_id=asset.id)}";
+        var assetId = "${asset.id}";
 
         var cuePoints = {
-            'ni6td4' : {'time' : 3000, 'text' : 'Call me Ishmael. Some years ago- never mind how long precisely- having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.', 'author' : 'dan', 'created' : '1 day'},
-            'nogm6o' : {'time' : 8000, 'text' : 'It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth;', 'author' : 'tom', 'created' : '7 days'},
-            'tqn2jl' : {'time' : 12000, 'text' : 'whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet;', 'author' : 'sam', 'created' : '1 hour'},
-            'asdf12' : {'time' : 13000, 'text' : 'and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking peoples hats off', 'author' : 'bob', 'created' : '2 years'},
-            'nis6td4' : {'time' : 15000, 'text' : 'This is my substitute for pistol and ball. With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship. There is nothing surprising in this.', 'author' : 'john', 'created' : '1 day'},
-            'nogasdfm6o' : {'time' : 20000, 'text' : 'There now is your insular city of the Manhattoes, belted round by wharves as Indian isles by coral reefs- commerce surrounds it with her surf.', 'author' : 'ted', 'created' : '7 days'},
-            'tqn2fdjl' : {'time' : 28000, 'text' : 'Right and left, the streets take you waterward. Its extreme downtown is the battery, where that noble mole is washed by waves, and cooled by breezes, which a few hours previous were out of sight of land. Look at the crowds of water-gazers there.', 'author' : 'mike', 'created' : '1 hour'},
-            'asdffdf12' : {'time' : 30000, 'text' : 'Circumambulate the city of a dreamy Sabbath afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by Whitehall, northward. What do you see?', 'author' : 'lisa', 'created' : '2 years'}
+        % for annotation in annotations:
+          '${annotation.id}' : {'time' : ${annotation.time}, 'text' : '${annotation.text}', 'author' : '${annotation.user.username}', 'created' : '${annotation.created_str()}'}
+          % if not loop.last:
+          ,
+          % endif
+        % endfor
         };
+
+        var cuePointIdList = [
+        % for annotation in annotations:
+          {'time' : ${annotation.time}, 'id' : '${annotation.id}'}
+          % if not loop.last:
+          ,
+          % endif
+        % endfor
+        ];
 
         $(function() {
 
-          var cuePointIdList = [];
-          $.each(cuePoints, function (key, value) {
-            var annotation = createAnnotation(key, value);
-            $('div#annotations').append(annotation);
-            cuePointIdList.push({'time' : value.time, 'id' : key});
+          $.each(cuePointIdList, function(i, cuepoint) {
+            $('div#annotations').append(createAnnotation(cuepoint.id, cuePoints[cuepoint.id]));
           })
           video.onCuepoint(cuePointIdList, cueAnnotation);
 
@@ -101,25 +107,7 @@
             var time = Number(video.getTime()) * 1000 + 100;
             if (text && !isNaN(time)) {
               $(this).find('input.add-annotation').val('');
-              var cuepointId = Math.random().toString(36).substring(2,8);
-              var cuepoint = {'time' : time, 'text' : text, 'author' : username, 'created' : 'just now'};
-              cuePoints[cuepointId] = cuepoint;
-              video.onCuepoint([{'time' : time, 'id' : cuepointId}], cueAnnotation);
-              var annotation = createAnnotation(cuepointId, cuepoint);
-              var annotations = $('div#annotations').children('div.annotation');
-              var placed = false;
-              for (var i=0; i<annotations.length; i++) {
-                var a = $(annotations[i]);
-                if (a.data('time') > time) {
-                  a.before(annotation);
-                  placed = true;
-                  break;
-                }
-              }
-              if (!placed) {
-                $('div#annotations').append(annotation);
-              }
-              $('div#annotations').scrollTo(annotation, 600);
+              $.post(saveAnnotationURL, {'asset' : assetId, 'time' : time, 'text' : text}, saveAnnotationCallback, 'json');
             }
             return false;
           });
@@ -132,22 +120,44 @@
 
         });
 
+        function saveAnnotationCallback(cuepoint) {
+          var cuepointId = cuepoint.id;
+          var time = cuepoint.time;
+          cuePoints[cuepointId] = cuepoint;
+          video.onCuepoint([{'time' : time, 'id' : cuepointId}], cueAnnotation);
+          var annotation = createAnnotation(cuepointId, cuepoint);
+          var annotations = $('div#annotations').children('div.annotation');
+          var placed = false;
+          for (var i=0; i<annotations.length; i++) {
+            var a = $(annotations[i]);
+            if (a.data('time') > time) {
+              a.before(annotation);
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) {
+            $('div#annotations').append(annotation);
+          }
+          $('div#annotations').scrollTo(annotation, 600);
+        }
+
         function createAnnotation(key, value) {
           var secs = Math.floor(value.time / 1000);
-            var mins = Math.floor(secs / 60);
-            secs = ("0" + (secs % 60)).slice(-2);
-            var annotation = $('<div>').attr('id', 'annotation-' + key)
-                                       .addClass('annotation')
-                                       .append($('<span>').addClass('annotation-time').text(mins + ':' + secs))
-                                       .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
-                                       .append($('<span>').addClass('annotation-text').text(value.text))
-                                       .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
-                                       .append($('<span>').addClass('annotation-author').text(value.author).attr('title', value.author))
-                                       .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
-                                       .append($('<span>').addClass('annotation-created').text(value.created))
-                                       .append($('<span>').addClass('annotation-delete').append($('<button>').addClass('close').html('&times;')));
-            annotation.data('time', value.time);
-            return annotation;
+          var mins = Math.floor(secs / 60);
+          secs = ("0" + (secs % 60)).slice(-2);
+          var annotation = $('<div>').attr('id', 'annotation-' + key)
+                                     .addClass('annotation')
+                                     .append($('<span>').addClass('annotation-time').text(mins + ':' + secs))
+                                     .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
+                                     .append($('<span>').addClass('annotation-text').text(value.text))
+                                     .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
+                                     .append($('<span>').addClass('annotation-author').text(value.author).attr('title', value.author))
+                                     .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
+                                     .append($('<span>').addClass('annotation-created').text(value.created))
+                                     .append($('<span>').addClass('annotation-delete').append($('<button>').addClass('close').html('&times;')));
+          annotation.data('time', value.time);
+          return annotation;
         }
 
         function cueAnnotation(clip, cuepointId) {

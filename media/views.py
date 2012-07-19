@@ -13,7 +13,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound, HTTPSeeOther, HTTPFo
 from sqlalchemy import func
 from sqlalchemy.exc import DBAPIError
 
-from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant
+from .models import DBSession, User, Asset, DerivativeAsset, Collection, CollectionGrant, Annotation
 from .models import UserLog, CollectionLog, AssetLog
 from .config import Config
 
@@ -188,9 +188,11 @@ def show_asset(request):
     else:
         asset.transcode = transcodes[0]
     asset.youtube = youtube_matches[0] if youtube_matches else None
+    annotations = sorted(asset.annotations, key=lambda x: x.time)
     return {
         'user' : user,
         'asset' : asset,
+        'annotations' : annotations,
         'base_media_url' : Config.BASE_MEDIA_URL,
         'show_modify_asset' : has_permission('write', request.context, request),
     }
@@ -271,6 +273,24 @@ def admin_users_save(request):
                 raise Exception("i don't know about user type %s" % user_type)
 
     return HTTPSeeOther(location=request.route_url('admin-users'))
+
+@view_config(route_name='save-annotation', renderer='json', permission='write')
+def save_annotation(request):
+    user = get_user(request)
+    asset_id = request.matchdict['asset_id']
+    asset = DBSession.query(Asset).join(DerivativeAsset).filter(Asset.id==asset_id).one()
+    time = int(request.params['time'])
+    text = request.params['text']
+    annotation = Annotation(user, asset, time, text)
+    DBSession.add(annotation)
+    DBSession.flush()
+    return {
+        'id'      : annotation.id,
+        'time'    : time,
+        'text'    : text,
+        'author'  : user.username,
+        'created' : 'just now',
+    }
 
 @view_config(route_name='upload-asset-to-youtube', renderer='json', permission='write')
 def youtube_upload(request):

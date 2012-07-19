@@ -125,6 +125,37 @@ class User(Base):
     def validate_password(self, password):
         return bcrypt.verify(password, self.password)
 
+class Annotation(Base):
+
+    __tablename__ = 'annotations'
+
+    id = Column(Text, primary_key=True)
+    user_id = Column(Text, ForeignKey('users.id'), nullable=False)
+    asset_id = Column(Text, ForeignKey('assets.id'), nullable=False)
+    time = Column(Integer, nullable=False)
+    text = Column(Text, nullable=False)
+    created = Column(DateTime, nullable=False)
+    active = Column(Boolean, nullable=False)
+
+    inactive_time = Column(DateTime)
+    inactive_user_id = Column(Text, ForeignKey('users.id'))
+
+    asset = relationship(Asset, backref='annotations')
+    user = relationship(User, primaryjoin='Annotation.user_id==User.id')
+    inactive_user = relationship(User, primaryjoin='Annotation.inactive_user_id==User.id')
+
+    def created_str(self):
+        return 'just now'
+
+    def __init__(self, user, asset, time, text):
+        self.id = ''.join(random.choice(string.ascii_lowercase + string.digits) for x in range(6))
+        self.user = user
+        self.asset = asset
+        self.time = time
+        self.text = text
+        self.created = datetime.utcnow()
+        self.active = True
+
 class CollectionGrant(Base):
 
     __tablename__ = 'collection_grants'
