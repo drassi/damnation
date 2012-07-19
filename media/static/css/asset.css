@@ -49,10 +49,12 @@ div.annotation:first-child {
 div.annotation span {
   display: inline-block;
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 span.annotation-time {
-  width: 6%;
+  width: 5%;
 }
 
 span.annotation-author {
@@ -60,7 +62,7 @@ span.annotation-author {
 }
 
 span.annotation-text {
-  width: 74%;
+  width: 72%;
 }
 
 span.annotation-created {
@@ -69,6 +71,10 @@ span.annotation-created {
 
 span.annotation-delete {
   width: 3%;
+}
+
+span.annotation-spacer {
+  width: 1%;
 }
 
 a.playlist-item {

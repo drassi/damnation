@@ -73,7 +73,7 @@
        % endif
       <script type="text/javascript">
 
-        var username = 'username';
+        var username = 'usernamealotbigger';
 
         var cuePoints = {
             'ni6td4' : {'time' : 3000, 'text' : 'Call me Ishmael. Some years ago- never mind how long precisely- having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.', 'author' : 'dan', 'created' : '1 day'},
@@ -139,8 +139,11 @@
             var annotation = $('<div>').attr('id', 'annotation-' + key)
                                        .addClass('annotation')
                                        .append($('<span>').addClass('annotation-time').text(mins + ':' + secs))
+                                       .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
                                        .append($('<span>').addClass('annotation-text').text(value.text))
-                                       .append($('<span>').addClass('annotation-author').text(value.author))
+                                       .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
+                                       .append($('<span>').addClass('annotation-author').text(value.author).attr('title', value.author))
+                                       .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
                                        .append($('<span>').addClass('annotation-created').text(value.created))
                                        .append($('<span>').addClass('annotation-delete').append($('<button>').addClass('close').html('&times;')));
             annotation.data('time', value.time);
