@@ -29,6 +29,7 @@ def main(global_config, **settings):
     config.add_route('modify-asset', '/asset/modify/{asset_id}', request_method='POST')
     config.add_route('move-assets', '/asset/move', request_method='POST')
     config.add_route('save-annotation', '/asset/annotation-save/{asset_id}', request_method='POST')
+    config.add_route('delete-annotation', '/annotation/delete/{annotation_id}', request_method='POST')
     config.add_route('upload-asset-to-youtube', '/asset/youtube-upload/{asset_id}', request_method='POST')
 
     config.add_route('admin-users', '/user/admin', request_method='GET')

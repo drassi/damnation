@@ -1,6 +1,6 @@
 from pyramid.security import Allow, Everyone, authenticated_userid
 
-from .models import DBSession, User, Asset, Collection, CollectionGrant
+from .models import DBSession, User, Asset, Collection, Annotation, CollectionGrant
 
 class RootFactory(object):
 
@@ -43,15 +43,19 @@ class RootFactory(object):
             return []
         matchdict = self.request.matchdict
         permissions = set()
+        # All all authenticated users read access to list/add collection pages, and superusers admin access
         if self.matched_route and self.matched_route.name in ['list-collections', 'add-collection']:
             permissions.add('read')
             if self.user.superuser:
                 permissions.add('admin')
+        # Allow superusers admin access to admin pages
         elif self.matched_route and self.matched_route.name in ['admin-users', 'admin-users-save']:
             if self.user.superuser:
                 permissions.add('admin')
+        # Grant move permission based on admin permission to both source and dest collections
         elif self.matched_route and self.matched_route.name == 'move-assets':
             permissions.update(self._get_move_permissions())
+        # Allow collection permissions based on collection grants
         elif 'collection_id' in matchdict:
             grant = self._get_collection_grant(self.user.id, matchdict['collection_id'])
             if grant == 'admin' or self.user.superuser:
@@ -60,15 +64,25 @@ class RootFactory(object):
                 permissions.update(['read', 'write'])
             elif grant == 'read':
                 permissions.update(['read'])
+        # Allow asset and annotation creation permissions based on the user's collection grants
         elif 'asset_id' in matchdict:
             asset = DBSession.query(Asset).get(matchdict['asset_id'])
             grant = self._get_collection_grant(self.user.id, asset.collection_id)
             if grant == 'admin' or self.user.superuser:
-                permissions.update(['read', 'write', 'admin'])
+                permissions.update(['read', 'annotate', 'write', 'admin'])
             if grant == 'write':
-                permissions.update(['read', 'write'])
+                permissions.update(['read', 'annotate', 'write'])
             elif grant =='read':
-                permissions.update(['read'])
+                permissions.update(['read', 'annotate'])
+        # Allow annotation modification based on annotation ownership or collection admin
+        elif 'annotation_id' in matchdict:
+            annotation = DBSession.query(Annotation).get(matchdict['annotation_id'])
+            if self.user.superuser or self.user == annotation.user:
+                permissions.update(['write'])
+            else:
+                grant = self._get_collection_grant(self.user.id, annotation.asset.collection_id)
+                if grant == 'admin':
+                    permissions.update(['write'])
         else:
             raise Exception('not sure how to generate ACLs for this request')
         return [(Allow, Everyone, permission) for permission in permissions]

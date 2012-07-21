@@ -75,6 +75,7 @@
 
         var username = '${user.username}';
         var saveAnnotationURL = "${request.route_path('save-annotation', asset_id=asset.id)}";
+        var deleteAnnotationURL = "${request.route_path('delete-annotation', annotation_id='ANNOTATION_ID')}";
         var assetId = "${asset.id}";
 
         var cuePoints = {
@@ -112,10 +113,20 @@
             return false;
           });
 
-          $('div#annotations').on('click', 'div.annotation', function() {
-            var annotation = $(this);
-            var time = annotation.data('time');
-            video.seek(time / 1000);
+          $('div#annotations').on('click', 'button.annotation-delete', function() {
+            if (confirm('Are you sure you want to delete this annotation?')) {
+              var annotationId = $(this).parents('div.annotation').data('id');
+              var deleteURL = deleteAnnotationURL.replace('ANNOTATION_ID', annotationId);
+              $.post(deleteURL, deleteAnnotationCallback, 'json');
+            }
+          });
+
+          $('div#annotations').on('click', 'div.annotation', function(e) {
+            if (!$(e.target).is('button.annotation-delete')) {
+              var annotation = $(this);
+              var time = annotation.data('time');
+              video.seek(time / 1000);
+            }
           });
 
         });
@@ -142,6 +153,12 @@
           $('div#annotations').scrollTo(annotation, 600);
         }
 
+        function deleteAnnotationCallback(data) {
+          var annotationId = data.id;
+          $('div#annotation-' + annotationId).remove();
+          delete cuePoints[annotationId];
+        }
+
         function createAnnotation(key, value) {
           var secs = Math.floor(value.time / 1000);
           var mins = Math.floor(secs / 60);
@@ -155,8 +172,9 @@
                                      .append($('<span>').addClass('annotation-author').text(value.author).attr('title', value.author))
                                      .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
                                      .append($('<span>').addClass('annotation-created').text(value.created))
-                                     .append($('<span>').addClass('annotation-delete').append($('<button>').addClass('close').html('&times;')));
+                                     .append($('<span>').addClass('annotation-delete').append($('<button>').addClass('close').addClass('annotation-delete').html('&times;')));
           annotation.data('time', value.time);
+          annotation.data('id', key);
           return annotation;
         }
 

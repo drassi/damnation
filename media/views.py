@@ -3,6 +3,7 @@ import os
 import random
 import string
 import simplejson as json
+from datetime import datetime
 from redis import Redis
 
 from pyramid.response import Response
@@ -188,7 +189,7 @@ def show_asset(request):
     else:
         asset.transcode = transcodes[0]
     asset.youtube = youtube_matches[0] if youtube_matches else None
-    annotations = sorted(asset.annotations, key=lambda x: x.time)
+    annotations = sorted([a for a in asset.annotations if a.active], key=lambda x: x.time)
     return {
         'user' : user,
         'asset' : asset,
@@ -274,7 +275,7 @@ def admin_users_save(request):
 
     return HTTPSeeOther(location=request.route_url('admin-users'))
 
-@view_config(route_name='save-annotation', renderer='json', permission='write')
+@view_config(route_name='save-annotation', renderer='json', permission='annotate')
 def save_annotation(request):
     user = get_user(request)
     asset_id = request.matchdict['asset_id']
@@ -290,6 +291,18 @@ def save_annotation(request):
         'text'    : text,
         'author'  : user.username,
         'created' : 'just now',
+    }
+
+@view_config(route_name='delete-annotation', renderer='json', permission='write')
+def delete_annotation(request):
+    user = get_user(request)
+    annotation_id = request.matchdict['annotation_id']
+    annotation = DBSession.query(Annotation).get(annotation_id)
+    annotation.active = False
+    annotation.inactive_time = datetime.utcnow()
+    annotation.inactive_user = user
+    return {
+        'id' : annotation_id
     }
 
 @view_config(route_name='upload-asset-to-youtube', renderer='json', permission='write')
