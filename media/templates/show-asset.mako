@@ -80,7 +80,11 @@
 
         var cuePoints = {
         % for annotation in annotations:
-          '${annotation.id}' : {'time' : ${annotation.time}, 'text' : '${annotation.text}', 'author' : '${annotation.user.username}', 'created' : '${annotation.created_str()}'}
+          '${annotation.id}' : {'time' : ${annotation.time},
+                                'text' : '${annotation.text}',
+                                'author' : '${annotation.user.username}',
+                                'created' : '${annotation.created_str()}',
+                                'deletable' : ${'true' if annotation.deletable else 'false'}}
           % if not loop.last:
           ,
           % endif
@@ -101,7 +105,9 @@
           $.each(cuePointIdList, function(i, cuepoint) {
             $('div#annotations').append(createAnnotation(cuepoint.id, cuePoints[cuepoint.id]));
           })
-          video.onCuepoint(cuePointIdList, cueAnnotation);
+          if (cuePointIdList.length) {
+            video.onCuepoint(cuePointIdList, cueAnnotation);
+          }
 
           $('form#add-annotation').submit(function () {
             var text = $.trim($(this).find('input.add-annotation').val());
@@ -163,6 +169,12 @@
           var secs = Math.floor(value.time / 1000);
           var mins = Math.floor(secs / 60);
           secs = ("0" + (secs % 60)).slice(-2);
+          var delbutton;
+          if (value.deletable) {
+            delbutton = $('<button>').addClass('close').addClass('annotation-delete').html('&times;');
+          } else {
+            delbutton = $('<span>').html('&nbsp');
+          }
           var annotation = $('<div>').attr('id', 'annotation-' + key)
                                      .addClass('annotation')
                                      .append($('<span>').addClass('annotation-time').text(mins + ':' + secs))
@@ -172,7 +184,7 @@
                                      .append($('<span>').addClass('annotation-author').text(value.author).attr('title', value.author))
                                      .append($('<span>').addClass('annotation-spacer').html('&nbsp;'))
                                      .append($('<span>').addClass('annotation-created').text(value.created))
-                                     .append($('<span>').addClass('annotation-delete').append($('<button>').addClass('close').addClass('annotation-delete').html('&times;')));
+                                     .append($('<span>').addClass('annotation-delete').append(delbutton));
           annotation.data('time', value.time);
           annotation.data('id', key);
           return annotation;

@@ -189,7 +189,14 @@ def show_asset(request):
     else:
         asset.transcode = transcodes[0]
     asset.youtube = youtube_matches[0] if youtube_matches else None
+    collection_grant = DBSession.query(CollectionGrant) \
+                                .filter(CollectionGrant.user_id==user.id) \
+                                .filter(CollectionGrant.collection_id==asset.collection_id) \
+                                .first()
+    is_collection_admin = collection_grant and collection_grant.grant_type == 'admin'
     annotations = sorted([a for a in asset.annotations if a.active], key=lambda x: x.time)
+    for a in annotations:
+        a.deletable = user.superuser or is_collection_admin or a.user == user
     return {
         'user' : user,
         'asset' : asset,
